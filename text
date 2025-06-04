@@ -1,5 +1,82 @@
- <app-navbar></app-navbar>
+import { Component } from '@angular/core';
+import { BookService } from '../book.service';
+import { AllBook } from '../model/AllBook';
+
+@Component({
+  selector: 'app-book-list',
+  templateUrl: './book-list.component.html',
+  styleUrls: ['./book-list.component.css']
+})
+export class BookListComponent {
+  books: AllBook[] = [];
+  allBooks: AllBook[] = []; // To restore original list after clearing search
+  searchType: string = 'title';
+  searchValue: string = '';
+  error: any;
+
+  constructor(private bookService: BookService) {
+    this.loadBooks();
+  }
+
+  loadBooks(): void {
+    this.bookService.view().subscribe({
+      next: (response: AllBook[]) => {
+        this.books = response;
+        this.allBooks = response;
+      },
+      error: err => this.error = err.message
+    });
+  }
+
+  searchBooks(): void {
+    if (!this.searchValue.trim()) {
+      this.books = this.allBooks;
+      return;
+    }
+
+    switch (this.searchType) {
+      case 'title':
+        this.bookService.searchByTitle(this.searchValue).subscribe(data => this.books = data);
+        break;
+      case 'author':
+        this.bookService.searchByAuthor(this.searchValue).subscribe(data => this.books = data);
+        break;
+      case 'genre':
+        this.bookService.searchByGenre(this.searchValue).subscribe(data => this.books = data);
+        break;
+    }
+  }
+}
+
+
+
+
+
+
+
+
+<app-navbar></app-navbar>
+
 <div class="container">
+
+  <!-- 🔍 Search Area -->
+  <div class="row mb-4 mt-4">
+    <div class="col-md-4">
+      <select class="form-select" [(ngModel)]="searchType">
+        <option value="title">Search by Title</option>
+        <option value="author">Search by Author</option>
+        <option value="genre">Search by Genre</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100" (click)="searchBooks()">Search</button>
+    </div>
+  </div>
+
+  <!-- 📚 Book Cards -->
   <div class="row align-items-center justify-content-center gap-4">
     <ng-container *ngFor="let book of books; let i = index">
       <div class="card shadow-lg col-md-3 mt-3 mb-3 text-center">
@@ -13,120 +90,32 @@
         <p><strong>Genre:</strong> {{ book.genre }}</p>
         <p><strong>ISBN:</strong> {{ book.isbn }}</p>
         <p><strong>Year:</strong> {{ book.yearPublished }}</p>
-        
+        <p><strong>Available:</strong> {{ book.availableCopies }}</p>
+
         <div class="d-flex justify-content-center mb-4 gap-2">
-          <button class="btn btn-outline-success" >Borrow</button>
+          <button class="btn btn-outline-success">Borrow</button>
           <button class="btn btn-outline-danger">Return</button>
-          <button class="btn btn-outline-warning" >Update</button>
+          <button class="btn btn-outline-warning">Update</button>
           <button class="btn btn-outline-danger">Delete</button>
         </div>
       </div>
     </ng-container>
   </div>
- 
+
+  <!-- ❗ No Results -->
   <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
-    No books available in the library.
+    No books found.
   </div>
- 
+
   <div class="d-grid">
-    <button type="submit" class="btn btn-custom mt-5" routerLink="/book">Ok</button>
+    <button class="btn btn-custom mt-4" routerLink="/book">Ok</button>
   </div>
 </div>
- 
-export class AllBookComponent {
-  books: AllBook[] = [];
-  error: any;
- 
-  constructor(private bookService: BookService) {
-    this.view();
-  }
- 
-  
-  view() {
-    this.bookService.view().subscribe({
-      next: (response: AllBook[]) => this.books = response,
-      error: err => this.error = err.message
-    });
-  }
-  
+
+
+.card {
+  transition: transform 0.2s ease-in-out;
 }
- 
-<app-navbar></app-navbar>
-<!-- book-search.component.html -->
-<div class="container book-search-container">
-    <div class="header-title">Search Books</div>
-   
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <select class="form-select" [(ngModel)]="searchType">
-          <option value="title">Title</option>
-          <option value="author">Author</option>
-          <option value="genre">Genre</option>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
-      </div>
-      <div class="col-md-2">
-        <button class="btn btn-primary w-100" (click)="searchBooks()">Search</button>
-      </div>
-    </div>
-   
-    <div class="table-responsive" *ngIf="books.length > 0">
-      <table class="table table-bordered table-hover align-middle text-center">
-        <thead>
-          <tr>
-            <!-- <th>#</th> -->
-            <th>Book Title</th>
-            <th>Author</th>
-            <th>Genre</th>
-            <th>ISBN</th>
-            <th>Year</th>
-            <th>Available</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let book of books; let i = index">
-            <td>{{ i + 1 }}</td>
-            <!-- <td>{{ book.title }}</td> -->
-            <td>{{ book.author }}</td>
-            <td>{{ book.genre }}</td>
-            <td>{{ book.isbn }}</td>
-            <td>{{ book.yearPublished }}</td>
-            <td>{{ book.availableCopies }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-   
-    <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
-      No matching books found.
-    </div>
-    <div class="d-grid">
-      <button type="submit" class="btn btn-custom" routerLink="/book">Ok</button>
-    </div>
-  </div>
-   
-  export class BookSearchComponent {
-  books: AllBook[] = [];
-  searchType: string = 'title';
-  searchValue: string = '';
- 
-  constructor(private bookService: BookService) {}
- 
-  searchBooks(): void {
-    if (!this.searchValue.trim()) return;
- 
-    switch (this.searchType) {
-      case 'title':
-        this.bookService.searchByTitle(this.searchValue).subscribe(data => this.books = data);
-        break;
-      case 'author':
-        this.bookService.searchByAuthor(this.searchValue).subscribe(data => this.books = data);
-        break;
-      case 'genre':
-        this.bookService.searchByGenre(this.searchValue).subscribe(data => this.books = data);
-        break;
-    }
-  }
+.card:hover {
+  transform: scale(1.03);
 }
