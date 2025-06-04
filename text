@@ -1,13 +1,19 @@
 import { Component } from '@angular/core';
-import { BookService } from '../book.service';
-import { AllBook } from '../model/AllBook';
-
+import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { AllBook, BookService, } from '../book.service';
+import { FormsModule } from '@angular/forms';
+ 
 @Component({
-  selector: 'app-book-list',
-  templateUrl: './book-list.component.html',
-  styleUrls: ['./book-list.component.css']
+  selector: 'app-all-book',
+  standalone: true,
+  imports: [CommonModule, RouterLink, NavbarComponent,FormsModule],
+  templateUrl: './all-book.component.html',
+  styleUrls: ['./all-book.component.css']
 })
-export class BookListComponent {
+export class AllBookComponent {
+
   books: AllBook[] = [];
   allBooks: AllBook[] = []; // To restore original list after clearing search
   searchType: string = 'title';
@@ -47,11 +53,6 @@ export class BookListComponent {
     }
   }
 }
-
-
-
-
-
 
 
 
@@ -112,7 +113,117 @@ export class BookListComponent {
   </div>
 </div>
 
-
+body {
+    background-color: #f2f4f8;
+  }
+   
+  .view-books-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    margin-top: 200px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+   
+  .table thead {
+    background-color: #0d6efd;
+    color: white;
+  }
+   
+  .table-hover tbody tr:hover {
+    background-color: #f1f1f1;
+  }
+   
+  .header-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 25px;
+    text-align: center;
+  }
+   .btn-custom {
+    background-color: #0d6efd;
+    margin-left: 450px;
+    margin-right: 450px;
+    color: white;
+    font-weight: 500;
+  }
+  /* Container adjustments */
+.container {
+  padding-top: 40px;
+  padding-bottom: 40px;
+  margin-top: 100px;
+}
+ 
+/* Book card styling */
+.card {
+  border-radius: 15px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  background-color: #fefefe;
+}
+ 
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+ 
+/* Image styling */
+.card img {
+  height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin: 0 auto;
+  width: 90%;
+}
+ 
+/* Book title */
+.card h3 {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #007bff;
+  margin-bottom: 10px;
+}
+ 
+/* Info text */
+.card p {
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+  color: #333;
+}
+ 
+/* Button spacing */
+.card .btn {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s;
+}
+ 
+/* Success and danger hover effects */
+.btn-outline-warning:hover {
+  background-color: #ffc107;
+  color: #fff;
+}
+ 
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+ 
+/* Info message if no books */
+.alert-info {
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 10px;
+}
+.btn-custom {
+  background-color: #0d6efd;
+  margin-left: 570px;
+  margin-right: 570px;
+  color: white;
+  font-weight: 500;
+}
 .card {
   transition: transform 0.2s ease-in-out;
 }
