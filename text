@@ -1,103 +1,47 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { AllBook, BookService, } from '../book.service';
-import { FormsModule } from '@angular/forms';
- 
-@Component({
-  selector: 'app-all-book',
-  standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent,FormsModule],
-  templateUrl: './all-book.component.html',
-  styleUrls: ['./all-book.component.css']
-})
-export class AllBookComponent {
-
-  books: AllBook[] = [];
-  allBooks: AllBook[] = []; // To restore original list after clearing search
-  searchType: string = 'title';
-  searchValue: string = '';
-  error: any;
-
-  constructor(private bookService: BookService) {
-    this.loadBooks();
-  }
-
-  loadBooks(): void {
-    this.bookService.view().subscribe({
-      next: (response: AllBook[]) => {
-        this.books = response;
-        this.allBooks = response;
-      },
-      error: err => this.error = err.message
-    });
-  }
-
-  searchBooks(): void {
-    if (!this.searchValue.trim()) {
-      this.books = this.allBooks;
-      return;
-    }
-
-    switch (this.searchType) {
-      case 'title':
-        this.bookService.searchByTitle(this.searchValue).subscribe(data => this.books = data);
-        break;
-      case 'author':
-        this.bookService.searchByAuthor(this.searchValue).subscribe(data => this.books = data);
-        break;
-      case 'genre':
-        this.bookService.searchByGenre(this.searchValue).subscribe(data => this.books = data);
-        break;
-    }
-  }
-}
-
-
-
 <app-navbar></app-navbar>
 
 <div class="container">
-
   <!-- 🔍 Search Area -->
-  <div class="row mb-4 mt-4">
-    <div class="col-md-4">
+  <div class="row mb-4 mt-4 align-items-center">
+    <div class="col-sm-12 col-md-4 mb-2 mb-md-0">
       <select class="form-select" [(ngModel)]="searchType">
         <option value="title">Search by Title</option>
         <option value="author">Search by Author</option>
         <option value="genre">Search by Genre</option>
       </select>
     </div>
-    <div class="col-md-6">
+    <div class="col-sm-12 col-md-6 mb-2 mb-md-0">
       <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
     </div>
-    <div class="col-md-2">
+    <div class="col-sm-12 col-md-2">
       <button class="btn btn-primary w-100" (click)="searchBooks()">Search</button>
     </div>
   </div>
 
   <!-- 📚 Book Cards -->
-  <div class="row align-items-center justify-content-center gap-4">
-    <ng-container *ngFor="let book of books; let i = index">
-      <div class="card shadow-lg col-md-3 mt-3 mb-3 text-center">
-        <img
-          src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
-          class="img-fluid rounded mt-3 mb-3"
-          alt="Book Cover"
-        />
-        <h3 class="text-primary">{{ book.title }}</h3>
-        <p><strong>Author:</strong> {{ book.author }}</p>
-        <p><strong>Genre:</strong> {{ book.genre }}</p>
-        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
-        <p><strong>Year:</strong> {{ book.yearPublished }}</p>
-        <p><strong>Available:</strong> {{ book.availableCopies }}</p>
-
-        <div class="d-flex justify-content-center mb-4 gap-2">
-          <button class="btn btn-outline-success">Borrow</button>
-          <button class="btn btn-outline-danger">Return</button>
-          <button class="btn btn-outline-warning">Update</button>
-          <button class="btn btn-outline-danger">Delete</button>
+  <div class="row">
+    <ng-container *ngFor="let book of books">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
+        <div class="card shadow w-100 text-center">
+          <img
+            src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
+            class="img-fluid rounded mt-3"
+            alt="Book Cover"
+          />
+          <div class="card-body">
+            <h3 class="text-primary">{{ book.title }}</h3>
+            <p><strong>Author:</strong> {{ book.author }}</p>
+            <p><strong>Genre:</strong> {{ book.genre }}</p>
+            <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+            <p><strong>Year:</strong> {{ book.yearPublished }}</p>
+            <p><strong>Available:</strong> {{ book.availableCopies }}</p>
+          </div>
+          <div class="card-footer d-flex flex-wrap justify-content-center gap-2 p-3">
+            <button class="btn btn-outline-success">Borrow</button>
+            <button class="btn btn-outline-danger">Return</button>
+            <button class="btn btn-outline-warning">Update</button>
+            <button class="btn btn-outline-danger">Delete</button>
+          </div>
         </div>
       </div>
     </ng-container>
@@ -108,67 +52,34 @@ export class AllBookComponent {
     No books found.
   </div>
 
-  <div class="d-grid">
-    <button class="btn btn-custom mt-4" routerLink="/book">Ok</button>
+  <!-- ✔ OK Button -->
+  <div class="d-flex justify-content-center mt-4">
+    <button class="btn btn-custom" routerLink="/book">Ok</button>
   </div>
 </div>
 
 body {
-    background-color: #f2f4f8;
-  }
-   
-  .view-books-container {
-    max-width: 1000px;
-    margin: 40px auto;
-    margin-top: 200px;
-    padding: 20px;
-    background-color: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  }
-   
-  .table thead {
-    background-color: #0d6efd;
-    color: white;
-  }
-   
-  .table-hover tbody tr:hover {
-    background-color: #f1f1f1;
-  }
-   
-  .header-title {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 25px;
-    text-align: center;
-  }
-   .btn-custom {
-    background-color: #0d6efd;
-    margin-left: 450px;
-    margin-right: 450px;
-    color: white;
-    font-weight: 500;
-  }
-  /* Container adjustments */
+  background-color: #f2f4f8;
+}
+
 .container {
   padding-top: 40px;
   padding-bottom: 40px;
-  margin-top: 100px;
+  margin-top: 60px;
 }
- 
+
 /* Book card styling */
 .card {
   border-radius: 15px;
-  transition: transform 0.3s, box-shadow 0.3s;
   background-color: #fefefe;
+  transition: transform 0.2s ease-in-out, box-shadow 0.3s;
 }
- 
+
 .card:hover {
-  transform: translateY(-5px);
+  transform: scale(1.03);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
- 
-/* Image styling */
+
 .card img {
   height: 200px;
   object-fit: cover;
@@ -176,57 +87,52 @@ body {
   margin: 0 auto;
   width: 90%;
 }
- 
-/* Book title */
+
 .card h3 {
   font-weight: 600;
   font-size: 1.2rem;
   color: #007bff;
   margin-bottom: 10px;
 }
- 
-/* Info text */
+
 .card p {
   font-size: 0.95rem;
   margin-bottom: 6px;
   color: #333;
 }
- 
-/* Button spacing */
+
 .card .btn {
   font-size: 0.9rem;
   padding: 6px 12px;
   border-radius: 8px;
   transition: background-color 0.2s, color 0.2s;
 }
- 
-/* Success and danger hover effects */
+
 .btn-outline-warning:hover {
   background-color: #ffc107;
   color: #fff;
 }
- 
+
 .btn-outline-danger:hover {
   background-color: #dc3545;
   color: #fff;
 }
- 
-/* Info message if no books */
+
 .alert-info {
   font-size: 1rem;
   font-weight: 500;
   border-radius: 10px;
 }
+
 .btn-custom {
   background-color: #0d6efd;
-  margin-left: 570px;
-  margin-right: 570px;
   color: white;
   font-weight: 500;
+  padding: 8px 24px;
+  border-radius: 10px;
+  transition: 0.3s;
 }
-.card {
-  transition: transform 0.2s ease-in-out;
-}
-.card:hover {
-  transform: scale(1.03);
+
+.btn-custom:hover {
+  background-color: #084298;
 }
