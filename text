@@ -1,66 +1,229 @@
-<app-navbar></app-navbar>
-<div class="container p-5">
-  <div class="add-book-card">
-    <h3 class="text-center mb-10">Add New Book</h3>
-    <form #addBook="ngForm" (ngSubmit)="validateAdd(addBook)">
-      <div class="mb-3">
-        <label for="title" class="form-label">Book Title</label>
-        <input ngModel name="title" type="text" class="form-control" id="title" placeholder="Enter book title" required />
+ <!-- <app-navbar></app-navbar>
+<div class="container">
+  <div class="row align-items-center justify-content-center gap-4">
+    <ng-container *ngFor="let book of books; let i = index">
+      <div class="card shadow-lg col-md-3 mt-3 mb-3 text-center">
+        <img
+          src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
+          class="img-fluid rounded mt-3 mb-3"
+          alt="Book Cover"
+        />
+        <h3 class="text-primary">{{ book.title }}</h3>
+        <p><strong>Author:</strong> {{ book.author }}</p>
+        <p><strong>Genre:</strong> {{ book.genre }}</p>
+        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+        <p><strong>Year:</strong> {{ book.yearPublished }}</p>
+        
+        <div class="d-flex justify-content-center mb-4 gap-2">
+          <button class="btn btn-outline-success" >Borrow</button>
+          <button class="btn btn-outline-danger">Return</button>
+        </div>
       </div>
-
-      <div class="mb-3">
-        <label for="author" class="form-label">Author</label>
-        <input ngModel name="author" type="text" class="form-control" id="author" placeholder="Enter author name" required />
-      </div>
-
-      <div class="mb-3">
-        <label for="genre" class="form-label">Genre</label>
-        <input ngModel name="genre" type="text" class="form-control" id="genre" placeholder="Enter genre" required />
-      </div>
-
-      <div class="mb-3">
-        <label for="isbn" class="form-label">ISBN</label>
-        <input ngModel name="isbn" type="text" class="form-control" id="isbn" placeholder="e.g., 978-3-16-148410-0" required />
-      </div>
-
-      <div class="mb-3">
-        <label for="year" class="form-label">Publication Year</label>
-        <input ngModel name="yearPublished" type="number" class="form-control" id="year" placeholder="e.g., 2024" required />
-      </div>
-
-      <div class="mb-3">
-        <label for="copies" class="form-label">Available Copies</label>
-        <input ngModel name="availableCopies" type="number" class="form-control" id="copies" placeholder="e.g., 2024" required />
-      </div>
-
-      <div class="d-grid">
-        <button type="submit" class="btn btn-custom">Add Book</button>
-      </div>
-    </form>
+    </ng-container>
+  </div>
+ 
+  <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
+    No books available in the library.
+  </div>
+ 
+  <div class="d-grid">
+    <button type="submit" class="btn btn-custom mt-5" routerLink="/book">Ok</button>
   </div>
 </div>
+  -->
+
+  <app-navbar></app-navbar>
+
+  <!-- <div class="d-flex justify-content-end mt-5">
+    <button class="btn btn-add-book" routerLink="/addBook" title="Click to add a new book">
+      <i class="bi bi-plus-circle-fill me-2"></i> Add New Book
+    </button>
+  </div> -->
+  
+  
+  
+  
+  <div class="container">
+    <!-- 🔍 Search Area -->
+    <div class="row mb-4 mt-4 align-items-center search-area">
+      <div class="col-sm-12 col-md-4 mb-2 mb-md-0">
+        <select class="form-select" [(ngModel)]="searchType">
+          <option value="title">Search by Title</option>
+          <option value="author">Search by Author</option>
+          <option value="genre">Search by Genre</option>
+        </select>
+      </div>
+      <div class="col-sm-12 col-md-6 mb-2 mb-md-0">
+        <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
+      </div>
+      <div class="col-sm-12 col-md-2">
+        <button class="btn btn-primary w-100" (click)="searchBooks()">Search</button>
+      </div>
+    </div>
+  
+    <!-- 📚 Book Cards -->
+    <div class="row">
+      <ng-container *ngFor="let book of books">
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
+          <div class="card shadow w-100 text-center">
+            <img
+              src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
+              class="img-fluid rounded mt-3"
+              alt="Book Cover"
+            />
+            <div class="card-body">
+              <h3 class="text-primary">{{ book.title }}</h3>
+              <p><strong>Author:</strong> {{ book.author }}</p>
+              <p><strong>Genre:</strong> {{ book.genre }}</p>
+              <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+              <p><strong>Year:</strong> {{ book.yearPublished }}</p>
+              <p><strong>Available:</strong> {{ book.availableCopies }}</p>
+            </div>
+            <div class="card-footer d-flex flex-wrap justify-content-center gap-2 p-3">
+              <button class="btn btn-outline-success">
+                <i class="bi bi-book"></i> Borrow
+              </button>
+              <button class="btn btn-outline-danger">
+                <i class="bi bi-arrow-return-left"></i> Return
+              </button>
+              <button class="btn btn-outline-warning">
+                <i class="bi bi-pencil-square"></i> Update
+              </button>
+              <button class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+    
+<!-- ➕ Add New Book Card -->
+<div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
+    <div class="card add-book-card shadow w-100 text-center" routerLink="/addBook" style="cursor: pointer;">
+      <div class="card-body d-flex flex-column justify-content-center align-items-center">
+        <i class="bi bi-plus-circle-fill display-4 text-success mb-3"></i>
+        <h5 class="text-success">Add New Book</h5>
+        <p class="text-muted">Click here to add a new book to the library</p>
+      </div>
+    </div>
+  </div>
+  
+  
+    <!-- ❗ No Results -->
+    <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
+      No books found.
+    </div>
+  
+    <!-- ✔ OK Button -->
+    <div class="d-flex justify-content-center mt-4">
+      <button class="btn btn-custom" routerLink="/book">Ok</button>
+    </div>
+  </div>
+  
 
 
-import { Component } from '@angular/core';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { Router, RouterLink } from '@angular/router';
-import { BookService } from '../book.service';
-import { FormsModule, NgForm } from '@angular/forms';
-
-@Component({
-  selector: 'addbook',
-  imports: [NavbarComponent,RouterLink,FormsModule],
-  templateUrl: './add-book.component.html',
-  styleUrl: './add-book.component.css'
-})
-export class AddBookComponent {
-  constructor(private router:Router, private bookService:BookService){}
-
-  validateAdd(form:NgForm){
-    this.bookService.add(form.value).subscribe(response=>console.log(response))
-    alert("Book Added Successfully")
-    this.router.navigate(["/book"])
-
-  }
-
+body {
+  background-color: #f2f4f8;
 }
+
+.container {
+  padding-top: 40px;
+  padding-bottom: 40px;
+  margin-top: 60px;
+}
+
+/* Search Area */
+.search-area {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Book card styling */
+.card {
+  border-radius: 15px;
+  background-color: #fefefe;
+  transition: transform 0.2s ease-in-out, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.card img {
+  height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin: 0 auto;
+  width: 90%;
+}
+
+.card h3 {
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: #007bff;
+  margin-bottom: 10px;
+}
+
+.card p {
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.card .btn {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s, transform 0.2s;
+}
+
+.card .btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-warning:hover {
+  background-color: #ffc107;
+  color: #fff;
+}
+
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.alert-info {
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 10px;
+}
+
+.btn-custom {
+  background-color: #0d6efd;
+  color: white;
+  font-weight: 500;
+  padding: 8px 24px;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+
+.btn-custom:hover {
+  background-color: #084298;
+}
+.add-book-card {
+  border: 2px dashed #28a745;
+  background-color: #f9fff9;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 15px;
+}
+
+.add-book-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 16px rgba(40, 167, 69, 0.2);
+  background-color: #eaffea;
+}
+
