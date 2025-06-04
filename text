@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { AllBook, BookService, } from '../book.service';
 import { FormsModule } from '@angular/forms';
+import { jwtDecode } from 'jwt-decode';
  
 @Component({
   selector: 'app-all-book',
@@ -69,9 +70,61 @@ export class AllBookComponent {
   trackById(index: number, book: AllBook) {
     return book.bookId;
   }
+
+  getRoleAndUserId(): { roles: string, userId: number } | null {
+    const token = localStorage.getItem('JWT');
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        const roles = decoded.roles;
+        const userId = decoded.userId;
+        console.log("Roles:", roles);
+        console.log("User ID:", userId);
+        return { roles, userId };
+      } catch (err) {
+        console.error("Invalid JWT token", err);
+      }
+    }
+    return null;
+  }
+
 }
 
-<app-navbar></app-navbar>
+ <!-- <app-navbar></app-navbar>
+<div class="container">
+  <div class="row align-items-center justify-content-center gap-4">
+    <ng-container *ngFor="let book of books; let i = index">
+      <div class="card shadow-lg col-md-3 mt-3 mb-3 text-center">
+        <img
+          src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
+          class="img-fluid rounded mt-3 mb-3"
+          alt="Book Cover"
+        />
+        <h3 class="text-primary">{{ book.title }}</h3>
+        <p><strong>Author:</strong> {{ book.author }}</p>
+        <p><strong>Genre:</strong> {{ book.genre }}</p>
+        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+        <p><strong>Year:</strong> {{ book.yearPublished }}</p>
+        
+        <div class="d-flex justify-content-center mb-4 gap-2">
+          <button class="btn btn-outline-success" >Borrow</button>
+          <button class="btn btn-outline-danger">Return</button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+ 
+  <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
+    No books available in the library.
+  </div>
+ 
+  <div class="d-grid">
+    <button type="submit" class="btn btn-custom mt-5" routerLink="/book">Ok</button>
+  </div>
+</div>
+  -->
+
+  <app-navbar></app-navbar>
 
   <div class="container">
     <!-- 🔍 Search Area -->
@@ -118,11 +171,11 @@ export class AllBookComponent {
               <button class="btn btn-outline-danger" title="Return Book">
                 <i class="bi bi-arrow-return-left"></i> Return
               </button>
-              <button class="btn btn-outline-warning" title="Update Book">
-                <i class="bi bi-pencil-square"(click)="updateBook(book.bookId)" ></i> Update
+              <button class="btn btn-outline-warning "(click)="updateBook(book.bookId)" title="Update Book">
+                <i class="bi bi-pencil-square" ></i> Update
               </button>
-              <button class="btn btn-outline-danger" title="Delete Book">
-                <i class="bi bi-trash"(click)="deleteBook(book.bookId)"></i> Delete
+              <button class="btn btn-outline-danger"(click)="deleteBook(book.bookId)" title="Delete Book">
+                <i class="bi bi-trash"></i> Delete
               </button>
             </div>
           </div>
@@ -152,4 +205,3 @@ export class AllBookComponent {
     </div>
   </div>
   
-
