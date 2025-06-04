@@ -1,33 +1,68 @@
-<div class="container mt-4">
-  <h2 class="text-center mb-4">Book Library</h2>
+X [ERROR] TS2339: Property 'add' does not exist on type 'BookService'. [plugin angular-compiler]
 
-  <div *ngIf="role === 'ADMIN'" class="mb-3 text-end">
-    <a class="btn btn-primary" routerLink="/addBook">Add New Book</a>
-  </div>
+    src/app/add-book/add-book.component.ts:17:21:
+      17 │     this.bookService.add(form.value).subscribe(response=>console.l...
+         ╵                      ~~~
 
-  <div class="row">
-    <div *ngFor="let book of books" class="col-md-4 mb-4">
-      <div class="card shadow p-3 rounded">
-        <div class="card-body">
-          <h5 class="card-title">{{ book.title }}</h5>
-          <p class="card-text">
-            <strong>Author:</strong> {{ book.author }}<br>
-            <strong>Status:</strong> {{ book.available ? 'Available' : 'Borrowed' }}
-          </p>
 
-          <!-- Member options -->
-          <div *ngIf="role === 'MEMBER'">
-            <button *ngIf="book.available" class="btn btn-success me-2" (click)="borrowBook(book.id)">Borrow</button>
-            <button *ngIf="!book.available" class="btn btn-warning" (click)="returnBook(book.id)">Return</button>
-          </div>
+X [ERROR] TS2339: Property 'view' does not exist on type 'BookService'. [plugin angular-compiler]
 
-          <!-- Admin options -->
-          <div *ngIf="role === 'ADMIN'">
-            <button class="btn btn-info me-2" (click)="updateBook(book.id)">Update</button>
-            <button class="btn btn-danger" (click)="deleteBook(book.id)">Delete</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+    src/app/all-book/all-book.component.ts:24:21:
+      24 │     this.bookService.view().subscribe({
+         ╵                      ~~~~
+
+
+X [ERROR] TS2339: Property 'searchByTitle' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-search/book-search.component.ts:27:25:
+      27 │         this.bookService.searchByTitle(this.searchValue).subscribe...
+         ╵                          ~~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'searchByAuthor' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-search/book-search.component.ts:30:25:
+      30 │         this.bookService.searchByAuthor(this.searchValue).subscrib...
+         ╵                          ~~~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'searchByGenre' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-search/book-search.component.ts:33:25:
+      33 │         this.bookService.searchByGenre(this.searchValue).subscribe...
+         ╵                          ~~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'view' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-up-del/book-up-del.component.ts:29:21:
+      29 │     this.bookService.view().subscribe((data) => {
+         ╵                      ~~~~
+
+
+X [ERROR] TS2339: Property 'delete' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-up-del/book-up-del.component.ts:36:23:
+      36 │       this.bookService.delete(bookId).subscribe(() => {
+         ╵                        ~~~~~~
+
+
+X [ERROR] TS2305: Module '"../book.service"' has no exported member 'AddBook'. [plugin angular-compiler]
+
+    src/app/book-update/book-update.component.ts:3:22:
+      3 │ import { BookService, AddBook, AllBook } from '../book.service';
+        ╵                       ~~~~~~~
+
+
+X [ERROR] TS2339: Property 'getById' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-update/book-update.component.ts:27:21:
+      27 │     this.bookService.getById(this.bookId).subscribe((data: AllBook...
+         ╵                      ~~~~~~~
+
+
+X [ERROR] TS2339: Property 'update' does not exist on type 'BookService'. [plugin angular-compiler]
+
+    src/app/book-update/book-update.component.ts:40:21:
+      40 │     this.bookService.update(this.bookId, this.book).subscribe(() => {
+         ╵                      ~~~~~~
