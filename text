@@ -1,126 +1,83 @@
- <!-- <app-navbar></app-navbar>
+<app-navbar></app-navbar>
+
 <div class="container">
-  <div class="row align-items-center justify-content-center gap-4">
-    <ng-container *ngFor="let book of books; let i = index">
-      <div class="card shadow-lg col-md-3 mt-3 mb-3 text-center">
-        <img
-          src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
-          class="img-fluid rounded mt-3 mb-3"
-          alt="Book Cover"
-        />
-        <h3 class="text-primary">{{ book.title }}</h3>
-        <p><strong>Author:</strong> {{ book.author }}</p>
-        <p><strong>Genre:</strong> {{ book.genre }}</p>
-        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
-        <p><strong>Year:</strong> {{ book.yearPublished }}</p>
-        
-        <div class="d-flex justify-content-center mb-4 gap-2">
-          <button class="btn btn-outline-success" >Borrow</button>
-          <button class="btn btn-outline-danger">Return</button>
+  <!-- 🔍 Search Area -->
+  <div class="row mb-4 mt-4 search-area align-items-center">
+    <div class="col-sm-12 col-md-4 mb-2 mb-md-0">
+      <select class="form-select" [(ngModel)]="searchType">
+        <option value="title">Search by Title</option>
+        <option value="author">Search by Author</option>
+        <option value="genre">Search by Genre</option>
+      </select>
+    </div>
+    <div class="col-sm-12 col-md-6 mb-2 mb-md-0">
+      <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
+    </div>
+    <div class="col-sm-12 col-md-2">
+      <button class="btn btn-primary w-100" (click)="searchBooks()">
+        <i class="bi bi-search"></i> Search
+      </button>
+    </div>
+  </div>
+
+  <!-- 📚 Book Cards -->
+  <div class="row">
+    <ng-container *ngFor="let book of books">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
+        <div class="card shadow w-100 text-center">
+          <img
+            src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
+            class="img-fluid rounded mt-3"
+            alt="Book Cover"
+          />
+          <div class="card-body">
+            <h4 class="text-primary fw-bold">{{ book.title }}</h4>
+            <p><strong>Author:</strong> {{ book.author }}</p>
+            <p><strong>Genre:</strong> {{ book.genre }}</p>
+            <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+            <p><strong>Year:</strong> {{ book.yearPublished }}</p>
+            <p><strong>Available:</strong> {{ book.availableCopies }}</p>
+          </div>
+          <div class="card-footer d-flex flex-wrap justify-content-center gap-2 p-3">
+            <button class="btn btn-outline-success" title="Borrow Book">
+              <i class="bi bi-book"></i> Borrow
+            </button>
+            <button class="btn btn-outline-danger" title="Return Book">
+              <i class="bi bi-arrow-return-left"></i> Return
+            </button>
+            <button class="btn btn-outline-warning" title="Update Book">
+              <i class="bi bi-pencil-square"></i> Update
+            </button>
+            <button class="btn btn-outline-danger" title="Delete Book">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </div>
         </div>
       </div>
     </ng-container>
+
+    <!-- ➕ Add New Book Card -->
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
+      <div class="card add-book-card shadow w-100 text-center" routerLink="/addBook" style="cursor: pointer;">
+        <div class="card-body d-flex flex-column justify-content-center align-items-center">
+          <i class="bi bi-plus-circle-fill display-4 text-success mb-3"></i>
+          <h5 class="text-success fw-semibold">Add New Book</h5>
+          <p class="text-muted small">Click to add a new book to the library</p>
+        </div>
+      </div>
+    </div>
   </div>
- 
+
+  <!-- ❗ No Results -->
   <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
-    No books available in the library.
+    No books found.
   </div>
- 
-  <div class="d-grid">
-    <button type="submit" class="btn btn-custom mt-5" routerLink="/book">Ok</button>
+
+  <!-- ✔ OK Button -->
+  <div class="d-flex justify-content-center mt-4">
+    <button class="btn btn-custom" routerLink="/book">Ok</button>
   </div>
 </div>
-  -->
-
-  <app-navbar></app-navbar>
-
-  <!-- <div class="d-flex justify-content-end mt-5">
-    <button class="btn btn-add-book" routerLink="/addBook" title="Click to add a new book">
-      <i class="bi bi-plus-circle-fill me-2"></i> Add New Book
-    </button>
-  </div> -->
-  
-  
-  
-  
-  <div class="container">
-    <!-- 🔍 Search Area -->
-    <div class="row mb-4 mt-4 align-items-center search-area">
-      <div class="col-sm-12 col-md-4 mb-2 mb-md-0">
-        <select class="form-select" [(ngModel)]="searchType">
-          <option value="title">Search by Title</option>
-          <option value="author">Search by Author</option>
-          <option value="genre">Search by Genre</option>
-        </select>
-      </div>
-      <div class="col-sm-12 col-md-6 mb-2 mb-md-0">
-        <input type="text" class="form-control" placeholder="Enter value to search" [(ngModel)]="searchValue">
-      </div>
-      <div class="col-sm-12 col-md-2">
-        <button class="btn btn-primary w-100" (click)="searchBooks()">Search</button>
-      </div>
-    </div>
-  
-    <!-- 📚 Book Cards -->
-    <div class="row">
-      <ng-container *ngFor="let book of books">
-        <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
-          <div class="card shadow w-100 text-center">
-            <img
-              src="https://tse1.mm.bing.net/th/id/OIP.li28PO9vkz1NQS9jN9ZOOAHaHa?w=161&h=180&c=7&r=0&o=5&dpr=1.2&pid=1.7"
-              class="img-fluid rounded mt-3"
-              alt="Book Cover"
-            />
-            <div class="card-body">
-              <h3 class="text-primary">{{ book.title }}</h3>
-              <p><strong>Author:</strong> {{ book.author }}</p>
-              <p><strong>Genre:</strong> {{ book.genre }}</p>
-              <p><strong>ISBN:</strong> {{ book.isbn }}</p>
-              <p><strong>Year:</strong> {{ book.yearPublished }}</p>
-              <p><strong>Available:</strong> {{ book.availableCopies }}</p>
-            </div>
-            <div class="card-footer d-flex flex-wrap justify-content-center gap-2 p-3">
-              <button class="btn btn-outline-success">
-                <i class="bi bi-book"></i> Borrow
-              </button>
-              <button class="btn btn-outline-danger">
-                <i class="bi bi-arrow-return-left"></i> Return
-              </button>
-              <button class="btn btn-outline-warning">
-                <i class="bi bi-pencil-square"></i> Update
-              </button>
-              <button class="btn btn-outline-danger">
-                <i class="bi bi-trash"></i> Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      </ng-container>
-    </div>
-    
-<!-- ➕ Add New Book Card -->
-<div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch mb-4">
-    <div class="card add-book-card shadow w-100 text-center" routerLink="/addBook" style="cursor: pointer;">
-      <div class="card-body d-flex flex-column justify-content-center align-items-center">
-        <i class="bi bi-plus-circle-fill display-4 text-success mb-3"></i>
-        <h5 class="text-success">Add New Book</h5>
-        <p class="text-muted">Click here to add a new book to the library</p>
-      </div>
-    </div>
-  </div>
-  
-  
-    <!-- ❗ No Results -->
-    <div *ngIf="books.length === 0" class="alert alert-info text-center mt-4">
-      No books found.
-    </div>
-  
-    <!-- ✔ OK Button -->
-    <div class="d-flex justify-content-center mt-4">
-      <button class="btn btn-custom" routerLink="/book">Ok</button>
-    </div>
-  </div>
-  
 
 
 body {
@@ -161,21 +118,20 @@ body {
   width: 90%;
 }
 
-.card h3 {
+.card h4 {
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   color: #007bff;
-  margin-bottom: 10px;
 }
 
 .card p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   margin-bottom: 6px;
   color: #333;
 }
 
 .card .btn {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   padding: 6px 12px;
   border-radius: 8px;
   transition: background-color 0.2s, color 0.2s, transform 0.2s;
@@ -193,6 +149,11 @@ body {
 
 .btn-outline-danger:hover {
   background-color: #dc3545;
+  color: #fff;
+}
+
+.btn-outline-success:hover {
+  background-color: #198754;
   color: #fff;
 }
 
@@ -214,6 +175,8 @@ body {
 .btn-custom:hover {
   background-color: #084298;
 }
+
+/* Add Book Card */
 .add-book-card {
   border: 2px dashed #28a745;
   background-color: #f9fff9;
@@ -226,4 +189,3 @@ body {
   box-shadow: 0 8px 16px rgba(40, 167, 69, 0.2);
   background-color: #eaffea;
 }
-
