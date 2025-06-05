@@ -1,83 +1,8 @@
-import { Component } from '@angular/core';
-import { NgForm } from '@angular/forms';
-import { Router } from '@angular/router';
-import { AuthService, RegisterUser } from '../auth.service';
-
-@Component({
-  selector: 'app-register',
-  templateUrl: './register.component.html',
-  styleUrls: ['./register.component.css']
-})
-export class RegisterComponent {
-
-  selectedRole: string = '';
-  member = {
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    membershipStatus: 'Active'
-  };
-
-  constructor(private authService: AuthService, private router: Router) {}
-
-  validateR(form: NgForm) {
-    if (!this.selectedRole) {
-      alert('Please select a role!');
-      return;
-    }
-
-    const formData = form.value;
-
-    const registerUser: RegisterUser = {
-      username: formData.name,
-      email: formData.email,
-      password: formData.password,
-      roles: this.selectedRole
-    };
-
-    // Register in auth
-    this.authService.register(registerUser).subscribe({
-      next: (response) => {
-        console.log('Auth Registration Success:', response);
-
-        if (this.selectedRole === 'member') {
-          // Set member fields
-          this.member.name = formData.name;
-          this.member.email = formData.email;
-          this.member.phone = formData.phone;
-          this.member.address = formData.address;
-
-          // Call addMember API
-          this.authService.addMember(this.member).subscribe({
-            next: (res) => {
-              console.log('Member Added:', res);
-              alert('Member Registered Successfully!');
-              this.router.navigate(['/login']);
-            },
-            error: (err) => {
-              console.error('Member Registration Failed:', err);
-              alert('User created, but member registration failed!');
-            }
-          });
-        } else {
-          alert('Admin Registered Successfully!');
-          this.router.navigate(['/login']);
-        }
-      },
-      error: (err) => {
-        console.error('Auth Registration Failed:', err);
-        alert('Registration failed. Please try again.');
-      }
-    });
-  }
-}
-
 <app-navbar></app-navbar>
 
-<div class="container" style="margin-top: 100px;">
-  <div class="card shadow">
-    <div class="card-header bg-primary text-white">
+<div class="container" style="margin-top: 100px; max-width: 600px;">
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-primary text-white text-center rounded-top-4">
       <h3 class="mb-0">Register</h3>
     </div>
     <div class="card-body">
@@ -85,47 +10,51 @@ export class RegisterComponent {
 
         <!-- Name -->
         <div class="mb-3">
-          <label for="name" class="form-label">Name</label>
-          <input ngModel name="name" required type="text" class="form-control" />
+          <label for="name" class="form-label fw-semibold">Full Name</label>
+          <input ngModel name="name" required type="text" class="form-control rounded-3" placeholder="Enter your name" />
         </div>
 
         <!-- Email -->
         <div class="mb-3">
-          <label for="email" class="form-label">Email</label>
-          <input ngModel name="email" required type="email" class="form-control" />
+          <label for="email" class="form-label fw-semibold">Email</label>
+          <input ngModel name="email" required type="email" class="form-control rounded-3" placeholder="Enter your email" />
         </div>
 
         <!-- Password -->
         <div class="mb-3">
-          <label for="password" class="form-label">Password</label>
-          <input ngModel name="password" required type="password" class="form-control" />
+          <label for="password" class="form-label fw-semibold">Password</label>
+          <input ngModel name="password" required type="password" class="form-control rounded-3" placeholder="Create password" />
         </div>
 
         <!-- Phone -->
         <div class="mb-3">
-          <label for="phone" class="form-label">Phone</label>
-          <input ngModel name="phone" required type="text" class="form-control" />
+          <label for="phone" class="form-label fw-semibold">Phone</label>
+          <input ngModel name="phone" required type="text" class="form-control rounded-3" placeholder="Enter phone number" />
         </div>
 
         <!-- Address -->
         <div class="mb-3">
-          <label for="address" class="form-label">Address</label>
-          <input ngModel name="address" required type="text" class="form-control" />
+          <label for="address" class="form-label fw-semibold">Address</label>
+          <input ngModel name="address" required type="text" class="form-control rounded-3" placeholder="Enter address" />
         </div>
 
-        <!-- Role Dropdown -->
+        <!-- Role -->
         <div class="mb-3">
-          <label for="role" class="form-label">Select Role</label>
-          <select ngModel name="role" required class="form-control" [(ngModel)]="selectedRole">
+          <label for="role" class="form-label fw-semibold">Select Role</label>
+          <select ngModel name="role" required class="form-select rounded-3" [(ngModel)]="selectedRole">
             <option value="" disabled selected>Select a role</option>
             <option value="member">Member</option>
             <option value="admin">Admin</option>
           </select>
         </div>
 
-        <button class="btn btn-success w-100" type="submit" [disabled]="registerForm.invalid">
+        <button class="btn btn-success w-100 rounded-3 fw-bold" type="submit" [disabled]="registerForm.invalid">
           Register
         </button>
+
+        <div class="text-center mt-3">
+          <small>Already have an account? <a routerLink="/login">Login here</a></small>
+        </div>
       </form>
     </div>
   </div>
