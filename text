@@ -1,82 +1,111 @@
-<nav class="navbar navbar-expand-lg navbar-scroll fixed-top">
-  <div class="container-fluid">
 
-    <!-- Home icon on the left -->
-    <a class="navbar-brand text-white fw-bold d-flex align-items-center" routerLink="/home">
-      <i class="fas fa-home me-2"></i>
-      <span class="d-none d-md-inline">Library</span>
-    </a>
+<app-navbar></app-navbar>
+<section class="vh-100" style="background-color: #eee;">
+  <div class="container h-100">
+    <div class="row d-flex justify-content-center align-items-center h-100">
+      <div class="col-lg-12 col-xl-11">
+        <div class="card text-black" style="border-radius: 25px;">
+          <div class="card-body p-md-5">
+            <div class="row justify-content-center">
+              <div class="col-md-10 col-lg-6 col-xl-5 order-2 order-lg-1">
 
-    <!-- Toggle for mobile -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon text-white"></span>
-    </button>
+                <p class="text-center h1 fw-bold mb-5 mx-1 mx-md-4 mt-4">Sign up</p>
 
-    <!-- Right-aligned nav items -->
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-        <li class="nav-item" *ngIf="!isLoggedIn">
-          <a class="nav-link" routerLink="/login">LOGIN</a>
-        </li>
-        <li class="nav-item" *ngIf="!isLoggedIn">
-          <a class="nav-link" routerLink="/register">REGISTER</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" routerLink="/book">BOOK</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" routerLink="/member">MEMBER</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" routerLink="/borrow">BORROW'S</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" routerLink="/fine">FINE'S</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" routerLink="/notification">NOTIFICATION</a>
-        </li>
-        <li class="nav-item" *ngIf="isLoggedIn">
-          <a class="nav-link" (click)="logout()">LOGOUT</a>
-        </li>
-      </ul>
+                <form #RegisterForm="ngForm" class="mx-1 mx-md-4" (ngSubmit)="validateR(RegisterForm)">
+
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-user fa-lg me-3 fa-fw"></i>
+                    <div data-mdb-input-init class="form-outline flex-fill mb-0">
+                      <input ngModel name="name" type="text" id="form3Example1c" class="form-control" />
+                      <label class="form-label" for="form3Example1c">Your Name</label>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-envelope fa-lg me-3 fa-fw"></i>
+                    <div data-mdb-input-init class="form-outline flex-fill mb-0">
+                      <input ngModel name="email" type="email" id="form3Example3c" class="form-control" />
+                      <label class="form-label" for="form3Example3c">Your Email</label>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-lock fa-lg me-3 fa-fw"></i>
+                    <div data-mdb-input-init class="form-outline flex-fill mb-0">
+                      <input ngModel name="password" type="password" id="form3Example4c" class="form-control" />
+                      <label class="form-label" for="form3Example4c">Password</label>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-circle-user fa-lg me-2 fa-fw"></i>
+
+
+                    <div class="form-outline flex-fill mb-0">
+                      <select [(ngModel)]="selectedRole" name="roles" id="role" class="form-control" (change)="onRoleChange()">
+                          <option value="" disabled selected>Select Role</option>
+                          <option value="member">Member</option>
+                          <option value="admin">Admin</option>
+                          </select>
+                        <label class="form-label" for="role">Role</label>
+                    </div>
+
+
+                    <button [disabled]="selectedRole !== 'admin'" (click)="register()">Register</button>
+                   </form>
+
+                  </div>
+                  <div class="col-md-10 col-lg-6 col-xl-7 d-flex align-items-center order-1 order-lg-2">
+
+                    <img
+                      src="https://img.freepik.com/premium-vector/library-public-reading-room-with-bookcase-bookshelves-wooden-desks-chairs-computers_176411-1523.jpg?w=900"
+                      class="img-fluid" alt="Sample image">
+
+                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</nav>
-
-.navbar-brand i {
-  font-size: 1.4rem;
-  color: white;
-}
-
-.navbar-brand:hover i {
-  color: #ffcc00;
-}
+</section>
 
 
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { FormsModule, NgForm } from '@angular/forms';
 import { AuthService } from '../auth.service';
+import { jwtDecode } from 'jwt-decode';
 
 @Component({
-  selector: 'app-navbar',
-  templateUrl: './navbar.component.html',
-  styleUrls: ['./navbar.component.css']
+  selector: 'app-register',
+  imports: [NavbarComponent,RouterLink,FormsModule],
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.css'
 })
-export class NavbarComponent implements OnInit {
-  isLoggedIn = false;
+export class RegisterComponent {
+ 
+  selectedRole: string = '';
+  constructor(private router:Router, private authService:AuthService){}
 
-  constructor(private router: Router, private authService: AuthService) {}
+validateR(form:NgForm) 
+{
+  console.log('User Registeration')
+  this.authService.register(form.value).subscribe(response=>console.log(response))
+  this.router.navigate(['/login'])
+}
 
-  ngOnInit(): void {
-    this.isLoggedIn = !!this.authService.getJWT();
-  }
 
-  logout(): void {
-    this.authService.removeToken();
-    this.isLoggedIn = false;
-    alert('Logged out successfully');
-    this.router.navigate(['/home']);
-  }
+onRoleChange() {
+      if (this.selectedRole === 'member') {
+        this.router.navigate(['/add-member']);
+      }
+    }
+  
+    register() {
+      console.log('Registering admin...');
+    }
+  
+
 }
