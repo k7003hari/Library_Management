@@ -4,82 +4,66 @@
   <div class="card shadow-lg w-75">
     <div class="row g-0">
       
-      <!-- Left side image -->
+      <!-- Side Image -->
       <div class="col-md-6 d-none d-md-block">
-        <img src="https://images.unsplash.com/photo-1521791136064-7986c2920216" class="img-fluid h-100" alt="Register" style="object-fit: cover;">
+        <img src="https://images.unsplash.com/photo-1521791136064-7986c2920216" 
+             class="img-fluid h-100" alt="Register Image" style="object-fit: cover;" />
       </div>
 
-      <!-- Right side form -->
+      <!-- Registration Form -->
       <div class="col-md-6 bg-light p-5">
         <h3 class="text-center mb-4">Register</h3>
-        <form (ngSubmit)="register()" #registerForm="ngForm" novalidate>
+        <form #regForm="ngForm" (ngSubmit)="validateR(regForm)" novalidate>
 
           <!-- Name -->
           <div class="mb-3 input-group">
             <span class="input-group-text"><i class="fas fa-user"></i></span>
-            <input type="text" name="name" class="form-control" [(ngModel)]="formData.name" placeholder="Full Name" required />
+            <input type="text" name="name" class="form-control" placeholder="Full Name" [(ngModel)]="member.name" required />
           </div>
 
           <!-- Email -->
           <div class="mb-3 input-group">
             <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-            <input type="email" name="email" class="form-control" [(ngModel)]="formData.email" placeholder="Email" required />
+            <input type="email" name="email" class="form-control" placeholder="Email" [(ngModel)]="member.email" required />
           </div>
 
           <!-- Phone -->
           <div class="mb-3 input-group">
             <span class="input-group-text"><i class="fas fa-phone"></i></span>
-            <input type="text" name="phone" class="form-control" [(ngModel)]="formData.phone" placeholder="Phone" required />
+            <input type="text" name="phone" class="form-control" placeholder="Phone" [(ngModel)]="member.phone" required />
           </div>
 
           <!-- Address -->
           <div class="mb-3 input-group">
             <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-            <input type="text" name="address" class="form-control" [(ngModel)]="formData.address" placeholder="Address" required />
+            <input type="text" name="address" class="form-control" placeholder="Address" [(ngModel)]="member.address" required />
           </div>
 
           <!-- Password -->
           <div class="mb-3 input-group">
             <span class="input-group-text"><i class="fas fa-lock"></i></span>
-            <input type="password" name="password" class="form-control" [(ngModel)]="formData.password" placeholder="Password" required />
+            <input type="password" name="password" class="form-control" placeholder="Password" ngModel required />
           </div>
 
-          <!-- Role selection -->
-          <div class="mb-3 input-group">
+          <!-- Role -->
+          <div class="mb-4 input-group">
             <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
-            <select class="form-select" name="role" [(ngModel)]="selectedRole" required>
+            <select name="role" class="form-select" [(ngModel)]="selectedRole" required>
               <option value="" disabled selected>Select Role</option>
               <option value="member">Member</option>
               <option value="admin">Admin</option>
             </select>
           </div>
 
-          <!-- Submit button -->
-          <div class="d-grid">
-            <button class="btn btn-primary" type="submit" [disabled]="registerForm.invalid">
-              <i class="fas fa-user-plus me-2"></i> Register
-            </button>
-          </div>
-
+          <button type="submit" class="btn btn-primary w-100" [disabled]="regForm.invalid">
+            <i class="fas fa-user-plus me-2"></i> Register
+          </button>
         </form>
-        <p class="text-center mt-3">Already have an account? <a routerLink="/login">Login</a></p>
+
+        <p class="text-center mt-3">
+          Already have an account? <a routerLink="/login">Login</a>
+        </p>
       </div>
     </div>
   </div>
 </div>
-
-
-.register-container {
-  background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
-  padding: 40px 0;
-}
-
-.card {
-  border-radius: 15px;
-}
-
-input.ng-invalid.ng-touched,
-select.ng-invalid.ng-touched {
-  border-color: red;
-}
-
