@@ -1,62 +1,73 @@
-import { Component } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { FormsModule, NgForm } from '@angular/forms';
-import { AuthService } from '../auth.service';
-import { MemberService } from '../member.service';
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import {jwtDecode }from 'jwt-decode';
 
-@Component({
-  selector: 'app-register',
-  imports: [NavbarComponent, RouterLink, FormsModule],
-  templateUrl: './register.component.html',
-  styleUrl: './register.component.css'
+
+
+@Injectable({
+  providedIn: 'root'
 })
-export class RegisterComponent {
+export class AuthService {
+  
+  
+  pathL = "http://localhost:9090/auth/authenticate"  
+  pathR = "http://localhost:9090/auth/new"
 
-  constructor(private router: Router, private authService: AuthService, private memberService: MemberService) { }
+  constructor(private client: HttpClient) { }
 
-  validateR(form: NgForm) {
-    console.log('User Registration');
-
-    const userPayload = {
-      name: form.value.name,
-      email: form.value.email,
-      password: form.value.password,
-      roles: form.value.roles
-    };
-
-    const memberPayload = {
-      name: form.value.name,
-      email: form.value.email,
-        phone: form.value.phone,
-        address: form.value.address,
-        membershipStatus: form.value.membershipStatus
-      };
-
-    this.authService.register(userPayload).subscribe({
-      next: (response) => {
-        console.log('User registered:', response);
-
-        // After successful user registration, register member
-        console.log('Registering as Member');
-        this.memberService.addMember(memberPayload).subscribe({
-          next: (res) => {
-            console.log('Member registered:', res);
-            alert('Registration successful!');
-            this.router.navigate(['/login']);
-          },
-          error: (err) => {
-            console.error('Member registration failed:', err);
-            alert('Member registration failed.');
-          }
-        });
-      },
-      error: (err) => {
-        console.error('User registration failed:', err);
-        alert('User registration failed.');
-      }
-    });
+  public authenticate_User(authUser: User): Observable<string> {
+    console.log("Inside autheticate")
+    console.log(authUser)
+    return this.client.post(this.pathL, authUser, { responseType: 'text' });
   }
+
+ public register(register:RegisterUser): Observable<string> {
+    return this.client.post(this.pathR,register,{responseType: 'text'})
+  }
+
+  
+
+  getJWT():string
+  {
+    
+    return localStorage.getItem("JWT")
+  }
+  removeToken()
+  {
+    localStorage.removeItem("JWT")
+  }
+         
+
 }
 
-
+export class User {
+  username: string
+  password: string
+  constructor(username: string, password: string) {
+    this.username = username
+    this.password = password
+  }
+}
+export class RegisterUser{
+  username:string
+  email:string
+  password:string
+  roles:string
+  constructor(username: string,email:string,  password: string,roles:string)
+  {
+    this.username=username
+    this.email=email
+    this.password=password
+    this.roles=roles
+  }
+}
+export class addMember {
+  constructor(
+    public memberId: number,
+    public name: string,
+    public email: string,
+    public phone: string,
+    public address: string
+  ) { }
+}
