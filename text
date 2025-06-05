@@ -2,13 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { MemberService } from '../member.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {  Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
- 
+
 @Component({
   selector: 'app-member-up-del',
-  standalone:true,
-  imports: [RouterLink,FormsModule,CommonModule,NavbarComponent],
+  standalone: true,
+  imports: [RouterLink, FormsModule, CommonModule, NavbarComponent],
   templateUrl: './member-up-del.component.html',
   styleUrls: ['./member-up-del.component.css']
 })
@@ -16,24 +16,23 @@ export class MemberUpDelComponent implements OnInit {
   members: any[] = [];
   memberId: number = 0;
   member: any = null;
- 
- 
+
   constructor(private memberService: MemberService, private router: Router) {}
- 
+
   ngOnInit(): void {
     this.loadMembers();
   }
- 
+
   loadMembers(): void {
     this.memberService.getAllMembers().subscribe(data => {
       this.members = data;
     });
   }
- 
+
   updateMember(memberId: number): void {
     this.router.navigate(['/updateMember', memberId]);
   }
- 
+
   deleteMember(memberId: number): void {
     if (confirm('Are you sure you want to delete this member?')) {
       this.memberService.deleteMember(memberId).subscribe(() => {
@@ -42,12 +41,13 @@ export class MemberUpDelComponent implements OnInit {
       });
     }
   }
-  searchMember() {
+
+  searchMember(): void {
     if (!this.memberId) {
       alert('Please enter a valid Member ID');
       return;
     }
- 
+
     this.memberService.getMemberById(this.memberId).subscribe({
       next: (data) => {
         this.member = data;
@@ -59,15 +59,15 @@ export class MemberUpDelComponent implements OnInit {
         console.error('Error fetching member:', error);
       }
     });
+  }
 }
-}
-
 
 
 <app-navbar></app-navbar>
-<div class="container mt-5 "  style="margin-top: 150px;">
-  <h2 class="text-center text-primary mb-4" style="margin-top: 150px;">Search Member by ID</h2>
- 
+
+<div class="container mt-5" style="margin-top: 150px;">
+  <h2 class="text-center text-primary mb-4">Search Member by ID</h2>
+
   <div class="card p-4 shadow-sm">
     <div class="form-group">
       <input
@@ -79,59 +79,61 @@ export class MemberUpDelComponent implements OnInit {
       <button class="btn btn-primary w-100" (click)="searchMember()">Search</button>
     </div>
   </div>
- 
+
   <div *ngIf="member" class="card mt-4 shadow-sm border-success">
-    <div class="card-body"> 
-      
+    <div class="card-body">
+      <h5 class="card-title text-success">Member Found</h5>
       <p class="card-text"><strong>Name:</strong> {{ member.name }}</p>
-      <p class="card-text"><strong>Email:</strong> {{ member.email }}</p>        
+      <p class="card-text"><strong>Email:</strong> {{ member.email }}</p>
       <p class="card-text"><strong>Phone:</strong> {{ member.phone }}</p>
       <p class="card-text"><strong>Address:</strong> {{ member.address }}</p>
       <p class="card-text"><strong>Status:</strong> {{ member.membershipStatus }}</p>
     </div>
     <div class="d-grid">
-      <button type="submit" class="btn btn-custom" routerLink="/member">Ok</button>
+      <button class="btn btn-success" routerLink="/member">Ok</button>
     </div>
   </div>
 </div>
 
 <div class="container mt-5">
-    <h2 class="text-center mb-4">Manage Members</h2>
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-      <div class="col" *ngFor="let member of members">
-        <div class="card h-100 shadow">
-          <div class="card-body">
-            <img
-            src="https://cdn-icons-png.flaticon.com/512/2288/2288510.png"class="img-fluid rounded "alt="Member Cover"/>
-            <h3 class="text-primary">Member Details</h3>
-         <p>   
-            <strong>Name:</strong> {{ member.name }}<br>
-            <strong>Email:</strong> {{ member.email }}<br> 
-            <strong>Phone:</strong> {{ member.phone }}<br>
-            <strong>Address:</strong> {{ member.address }}<br>
-            <strong>Status:</strong> {{ member.membershipStatus }}
-            </p>
-          </div>
-          <div class="card-footer d-flex justify-content-between">
-            <button class="btn btn-warning" (click)="updateMember(member.memberId)">Update</button>
-            <button class="btn btn-danger" (click)="deleteMember(member.memberId)">Delete</button>
-            
-            <button class="btn btn-success" (click)="updateMember(member.memberId)">Check Fine</button>
-            <button class="btn btn-primary" (click)="deleteMember(member.memberId)">Pay Fine</button>
-          </div>
+  <h2 class="text-center text-primary mb-4">Manage Members</h2>
+
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    <div class="col" *ngFor="let member of members">
+      <div class="card h-100 shadow">
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/2288/2288510.png"
+          class="card-img-top p-3"
+          alt="Member Image"
+        />
+        <div class="card-body">
+          <h5 class="card-title text-primary">Member Details</h5>
+          <p class="card-text"><strong>Name:</strong> {{ member.name }}</p>
+          <p class="card-text"><strong>Email:</strong> {{ member.email }}</p>
+          <p class="card-text"><strong>Phone:</strong> {{ member.phone }}</p>
+          <p class="card-text"><strong>Address:</strong> {{ member.address }}</p>
+          <p class="card-text"><strong>Status:</strong> {{ member.membershipStatus }}</p>
+        </div>
+        <div class="card-footer d-flex flex-column gap-2">
+          <button class="btn btn-warning" (click)="updateMember(member.memberId)">Update</button>
+          <button class="btn btn-danger" (click)="deleteMember(member.memberId)">Delete</button>
+          <button class="btn btn-success">Check Fine</button>
+          <button class="btn btn-primary">Pay Fine</button>
         </div>
       </div>
     </div>
-    <div class="d-grid mt-5">
-      <button type="submit" class="btn btn-custom" routerLink="/member">Ok</button>
-    </div>
   </div>
-   
+
+  <div class="d-grid mt-4">
+    <button class="btn btn-secondary" routerLink="/member">Back</button>
+  </div>
+</div>
+
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
- 
+
 @Injectable({
   providedIn: 'root'
 })
@@ -141,27 +143,26 @@ export class MemberService {
   private searchUrl = 'http://localhost:9090/members/';
   private updateUrl = 'http://localhost:9090/members/update/';
   private deleteUrl = 'http://localhost:9090/members/delete/';
- 
+
   constructor(private http: HttpClient) {}
- 
+
   addMember(member: any): Observable<any> {
     return this.http.post(this.addUrl, member);
   }
- 
+
   getAllMembers(): Observable<any> {
     return this.http.get(this.viewUrl);
   }
- 
+
   getMemberById(id: number): Observable<any> {
     return this.http.get(this.searchUrl + id);
   }
- 
+
   updateMember(id: number, member: any): Observable<any> {
     return this.http.put(this.updateUrl + id, member);
   }
- 
+
   deleteMember(id: number): Observable<any> {
     return this.http.delete(this.deleteUrl + id);
   }
 }
- 
