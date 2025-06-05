@@ -1,10 +1,230 @@
-X [ERROR] NG9: Property 'onRoleChange' does not exist on type 'RegisterComponent'. [plugin angular-compiler]
+import { Component } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { FormsModule, NgForm } from '@angular/forms';
+import { AuthService } from '../auth.service';
+import { MemberService } from '../member.service';
 
-    src/app/register/register.component.html:47:110:
-      47 │ ...e="roles" class="form-control" required (change)="onRoleChange()">
-         ╵                                                      ~~~~~~~~~~~~
+@Component({
+  selector: 'app-register',
+  imports: [NavbarComponent,RouterLink,FormsModule],
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.css'
+})
+export class RegisterComponent {
 
-  Error occurs in the template of component RegisterComponent.
+  member = {
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    membershipStatus: ''
+  };
+ 
+  selectedRole: string = '';
+  constructor(private router:Router, private authService:AuthService,){}
 
-    src/app/register/register.component.ts:10:15:
-      10 │   templateUrl: './register.component.html',
+  validateR(form: NgForm) {
+    if (!this.selectedRole) {
+      alert('Please select a role!');
+      return;
+    }
+  
+    this.authService.register(form.value).subscribe({
+      next: (response) => {
+        console.log('User registered:', response);
+        if (this.selectedRole === 'admin') {
+          alert('Admin registered!');
+          this.router.navigate(['/login']);
+        } else if (this.selectedRole === 'member') {
+          alert('Member registered!');
+          this.router.navigate(['/login']);
+        }
+      },
+      error: (err) => {
+        console.error('Registration error:', err);
+        alert('Registration failed!');
+      }
+    });
+  }
+
+  addMember() {
+    this.authService.addMember(this.member).subscribe({
+      next: (res) => {
+        alert('Member added successfully!');
+        console.log('Add Member Response:', res);
+      },
+      error: (err) => {
+        alert('Failed to add member!');
+        console.error('Add Member Error:', err);
+      }
+    });
+  }
+
+}
+
+
+<app-navbar></app-navbar>
+
+<section class="vh-100" style="background-color: #eee;">
+  <div class="container h-100">
+    <div class="row d-flex justify-content-center align-items-center h-100">
+      <div class="col-lg-12 col-xl-11">
+        <div class="card text-black" style="border-radius: 25px;">
+          <div class="card-body p-md-5">
+            <div class="row justify-content-center">
+              <div class="col-md-10 col-lg-6 col-xl-5 order-2 order-lg-1">
+
+                <p class="text-center h1 fw-bold mb-5 mx-1 mx-md-4 mt-4">Sign up</p>
+
+                <form #RegisterForm="ngForm" class="mx-1 mx-md-4" (ngSubmit)="validateR(RegisterForm)">
+
+                  <!-- Name -->
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-user fa-lg me-3 fa-fw"></i>
+                    <div class="form-outline flex-fill mb-0">
+                      <input ngModel name="name" type="text" class="form-control" required />
+                      <label class="form-label">Your Name</label>
+                    </div>
+                  </div>
+
+                  <!-- Email -->
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-envelope fa-lg me-3 fa-fw"></i>
+                    <div class="form-outline flex-fill mb-0">
+                      <input ngModel name="email" type="email" class="form-control" required />
+                      <label class="form-label">Your Email</label>
+                    </div>
+                  </div>
+
+                  <!-- Password -->
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-lock fa-lg me-3 fa-fw"></i>
+                    <div class="form-outline flex-fill mb-0">
+                      <input ngModel name="password" type="password" class="form-control" required />
+                      <label class="form-label">Password</label>
+                    </div>
+                  </div>
+
+                  <!-- Role Select -->
+                  <div class="d-flex flex-row align-items-center mb-4">
+                    <i class="fas fa-circle-user fa-lg me-3 fa-fw"></i>
+                    <div class="form-outline flex-fill mb-0">
+                      <select [(ngModel)]="selectedRole" name="roles" class="form-control" required>
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <label class="form-label">Role</label>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="text" id="phone" class="form-control" name="phone" [(ngModel)]="member.phone"
+                      required />
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="address" class="form-label">Address</label>
+                    <input type="text" id="address" class="form-control" name="address" [(ngModel)]="member.address"
+                      required />
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="membershipStatus" class="form-label">Membership Status</label>
+                    <input type="text" id="membershipStatus" class="form-control" name="membershipStatus"
+                      [(ngModel)]="member.membershipStatus" required />
+                  </div>
+
+                  <!-- Submit -->
+                  <div class="d-flex justify-content-center mx-4 mb-3 mb-lg-4">
+                    <button type="submit" class="btn btn-primary btn-lg">Register</button>
+                  </div>
+
+                </form>
+
+              </div>
+
+              <!-- Image -->
+              <div class="col-md-10 col-lg-6 col-xl-7 d-flex align-items-center order-1 order-lg-2">
+                <img
+                  src="https://img.freepik.com/premium-vector/library-public-reading-room-with-bookcase-bookshelves-wooden-desks-chairs-computers_176411-1523.jpg?w=900"
+                  class="img-fluid" alt="Library image">
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import {jwtDecode }from 'jwt-decode';
+
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  
+  pathL = "http://localhost:9090/auth/authenticate"  
+  pathR = "http://localhost:9090/auth/new"
+  private addUrl = 'http://localhost:9090/members/regMember';
+
+  constructor(private client: HttpClient) { }
+
+  public authenticate_User(authUser: User): Observable<string> {
+    console.log("Inside autheticate")
+    console.log(authUser)
+    return this.client.post(this.pathL, authUser, { responseType: 'text' });
+  }
+  addMember(member: any): Observable<any> {
+    return this.client.post(this.addUrl, member);
+  }
+
+ public register(register:RegisterUser): Observable<string> {
+    return this.client.post(this.pathR,register,{responseType: 'text'})
+  }
+
+  getJWT():string
+  {    
+    return localStorage.getItem("JWT")
+  }
+  removeToken()
+  {
+    localStorage.removeItem("JWT")
+  }
+      
+   
+
+}
+
+
+
+export class User {
+  username: string
+  password: string
+  constructor(username: string, password: string) {
+    this.username = username
+    this.password = password
+  }
+}
+export class RegisterUser{
+  username:string
+  email:string
+  password:string
+  roles:string
+  constructor(username: string,email:string,  password: string,roles:string)
+  {
+    this.username=username
+    this.email=email
+    this.password=password
+    this.roles=roles
+  }
+}
