@@ -67,3 +67,230 @@
     </div>
   </div>
 </div>
+
+// import { Component } from '@angular/core';
+// import { Router, RouterLink } from '@angular/router';
+// import { NavbarComponent } from '../navbar/navbar.component';
+// import { FormsModule, NgForm } from '@angular/forms';
+// import { AuthService, RegisterUser } from '../auth.service';
+// import { MemberService } from '../member.service';
+
+// @Component({
+//   selector: 'app-register',
+//   imports: [NavbarComponent,RouterLink,FormsModule],
+//   templateUrl: './register.component.html',
+//   styleUrl: './register.component.css'
+// })
+// export class RegisterComponent {
+
+//   member = {
+//     name: '',
+//     email: '',
+//     phone: '',
+//     address: '',
+//     membershipStatus: ''
+//   };
+ 
+//   selectedRole: string = '';
+//   constructor(private router:Router, private authService:AuthService,){}
+
+//   validateR(form: NgForm) {
+//     if (!this.selectedRole) {
+//       alert('Please select a role!');
+//       return;
+//     }
+  
+//     const formData = form.value;
+//     const registerUser: RegisterUser = {
+//       username: formData.name,
+//       email: formData.email,
+//       password: formData.password,
+//       roles: this.selectedRole
+//     };
+  
+//     // 1. Register the user (Auth)
+//     this.authService.register(registerUser).subscribe({
+//       next: (response) => {
+//         console.log('User registered in Auth:', response);
+  
+//         if (this.selectedRole === 'member') {
+//           const memberData = {
+//             name: formData.name,
+//             email: formData.email,
+//             phone: formData.phone,        // Add proper phone field in form if needed
+//             address:formData.address,      // Add address field too
+//             membershipStatus: 'Active'  // Default status
+//           };
+  
+//           // 2. Add the member in Library system
+//           this.authService.addMember(memberData).subscribe({
+//             next: (res) => {
+//               console.log('Member stored in Library DB:', res);
+//               alert('Member Registered Successfully!');
+//               this.router.navigate(['/login']);
+//             },
+//             error: (err) => {
+//               console.error('Member saving failed:', err);
+//               alert('User created, but member saving failed!');
+//             }
+//           });
+  
+//         } else if (this.selectedRole === 'admin') {
+//           alert('Admin Registered Successfully!');
+//           this.router.navigate(['/login']);
+//         }
+//       },
+//       error: (err) => {
+//         console.error('Auth registration failed:', err);
+//         alert('Registration failed. Please try again.');
+//       }
+//     });
+//   }
+// }
+import { Component } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService, RegisterUser } from '../auth.service';
+import { NavbarComponent } from '../navbar/navbar.component';
+
+@Component({
+  selector: 'app-register',
+  imports: [NavbarComponent,RouterLink,FormsModule],
+  templateUrl: './register.component.html',
+  styleUrls: ['./register.component.css']
+})
+export class RegisterComponent {
+
+  selectedRole: string = '';
+  member = {
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    membershipStatus: 'Active'
+  };
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  validateR(form: NgForm) {
+    if (!this.selectedRole) {
+      alert('Please select a role!');
+      return;
+    }
+
+    const formData = form.value;
+
+    const registerUser: RegisterUser = {
+      username: formData.name,
+      email: formData.email,
+      password: formData.password,
+      roles: this.selectedRole
+    };
+
+    // Register in auth
+    this.authService.register(registerUser).subscribe({
+      next: (response) => {
+        console.log('Auth Registration Success:', response);
+
+        if (this.selectedRole === 'member') {
+          // Set member fields
+          this.member.name = formData.name;
+          this.member.email = formData.email;
+          this.member.phone = formData.phone;
+          this.member.address = formData.address;
+
+          // Call addMember API
+          this.authService.addMember(this.member).subscribe({
+            next: (res) => {
+              console.log('Member Added:', res);
+              alert('Member Registered Successfully!');
+              this.router.navigate(['/login']);
+            },
+            error: (err) => {
+              console.error('Member Registration Failed:', err);
+              alert('User created, but member registration failed!');
+            }
+          });
+        } else {
+          alert('Admin Registered Successfully!');
+          this.router.navigate(['/login']);
+        }
+      },
+      error: (err) => {
+        console.error('Auth Registration Failed:', err);
+        alert('Registration failed. Please try again.');
+      }
+    });
+  }
+}
+
+
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import {jwtDecode }from 'jwt-decode';
+
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  
+  pathL = "http://localhost:9090/auth/authenticate"  
+  pathR = "http://localhost:9090/auth/new"
+  private addUrl = 'http://localhost:9090/members/regMember';
+
+  constructor(private client: HttpClient) { }
+
+  public authenticate_User(authUser: User): Observable<string> {
+    console.log("Inside autheticate")
+    console.log(authUser)
+    return this.client.post(this.pathL, authUser, { responseType: 'text' });
+  }
+  addMember(member: any): Observable<any> {
+    return this.client.post(this.addUrl, member);
+  }
+
+ public register(register:RegisterUser): Observable<string> {
+    return this.client.post(this.pathR,register,{responseType: 'text'})
+  }
+
+  getJWT():string
+  {    
+    return localStorage.getItem("JWT")
+  }
+  removeToken()
+  {
+    localStorage.removeItem("JWT")
+  }
+      
+   
+
+}
+
+
+
+export class User {
+  username: string
+  password: string
+  constructor(username: string, password: string) {
+    this.username = username
+    this.password = password
+  }
+}
+export class RegisterUser{
+  username:string
+  email:string
+  password:string
+  roles:string
+  constructor(username: string,email:string,  password: string,roles:string)
+  {
+    this.username=username
+    this.email=email
+    this.password=password
+    this.roles=roles
+  }
+}
+
+value is not storing in member table and name filed is not stored in userdb table please check
