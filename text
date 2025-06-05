@@ -1,278 +1,3 @@
-<app-navbar></app-navbar>
-
-<div class="container " style="margin-top: 150px;" >
-  <div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-      <h3 class="mb-0">Add New Member</h3>
-    </div>
-    <div class="card-body">
-      <form (ngSubmit)="addMember()" #addForm="ngForm" novalidate>
-        <div class="mb-3">
-          <label for="name" class="form-label">Name</label>
-          <input
-            type="text"
-            id="name"
-            class="form-control"
-            name="name"
-[(ngModel)]="member.name"
-            required
-          />
-        </div>
- 
-        <div class="mb-3">
-          <label for="email" class="form-label">Email</label>
-          <input
-            type="email"
-            id="email"
-            class="form-control"
-            name="email"
-[(ngModel)]="member.email"
-            required
-          />
-        </div>
- 
-        <div class="mb-3">
-          <label for="phone" class="form-label">Phone</label>
-          <input
-            type="text"
-            id="phone"
-            class="form-control"
-            name="phone"
-            [(ngModel)]="member.phone"
-            required
-          />
-        </div>
- 
-        <div class="mb-3">
-          <label for="address" class="form-label">Address</label>
-          <input
-            type="text"
-            id="address"
-            class="form-control"
-            name="address"
-            [(ngModel)]="member.address"
-            required
-          />
-        </div>
- 
-        <div class="mb-3">
-          <label for="membershipStatus" class="form-label">Membership Status</label>
-          <input
-            type="text"
-            id="membershipStatus"
-            class="form-control"
-            name="membershipStatus"
-            [(ngModel)]="member.membershipStatus"
-            required
-          />
-        </div>
- 
-        <button
-          type="submit"
-          class="btn btn-success w-100"
-          [disabled]="addForm.invalid"
-        >
-          Add Member
-        </button>
-      </form>
-    </div>
-  </div>
-</div>
-
-import { Component } from '@angular/core';
-import { MemberService } from '../member.service';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink, Router } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
- 
-@Component({
-  selector: 'app-member-add',  
-  imports: [RouterLink,FormsModule,CommonModule,NavbarComponent],
-  templateUrl: './member-add.component.html',  
-  styleUrls: ['./member-add.component.css']
-})
-export class MemberAddComponent {
-  member = {
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    membershipStatus: ''
-  };
- 
-  constructor(private memberService: MemberService,private route: ActivatedRoute, private router: Router,) {}
- 
-  addMember() {
-    this.memberService.addMember(this.member).subscribe({
-      next: (res) => {
-        alert('Member added successfully!');
-        console.log('Add Member Response:', res);
-        this.clearForm();
-      },
-      error: (err) => {
-        alert('Failed to add member!');
-        console.error('Add Member Error:', err);
-      }
-    });
-    this.router.navigate(['/member'])
-  }
- 
-  clearForm() {
-    this.member = {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      membershipStatus: ''
-    };
-  }
-}
-
-// import { Injectable } from '@angular/core';
-// import { HttpClient } from '@angular/common/http';
-// import { Observable } from 'rxjs';
- 
-// @Injectable({
-//   providedIn: 'root'
-// })
-// export class MemberService {
-//   private addUrl = 'http://localhost:9090/members/regMember';
-//   private viewUrl = 'http://localhost:9090/members/getallMember';
-//   private searchUrl = 'http://localhost:9090/members/';
-//   private updateUrl = 'http://localhost:9090/members/update/';
-//   private deleteUrl = 'http://localhost:9090/members/delete/';
- 
-//   constructor(private http: HttpClient) {}
- 
-//   addMember(member: any): Observable<any> {
-//     return this.http.post(this.addUrl, member);
-//   }
- 
-//   getAllMembers(): Observable<any> {
-//     return this.http.get(this.viewUrl);
-//   }
- 
-//   getMemberById(id: number): Observable<any> {
-//     return this.http.get(this.searchUrl + id);
-//   }
- 
-//   updateMember(id: number, member: any): Observable<any> {
-//     return this.http.put(this.updateUrl + id, member);
-//   }
- 
-//   deleteMember(id: number): Observable<any> {
-//     return this.http.delete(this.deleteUrl + id);
-//   }
-// }
- 
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class MemberService {
-  private addUrl = 'http://localhost:9090/members/regMember';
-  private viewUrl = 'http://localhost:9090/members/getallMember';
-  private searchUrl = 'http://localhost:9090/members/';
-  private updateUrl = 'http://localhost:9090/members/update/';
-  private deleteUrl = 'http://localhost:9090/members/delete/';
-
-  constructor(private http: HttpClient) {}
-
-  addMember(member: any): Observable<any> {
-    return this.http.post(this.addUrl, member);
-  }
-
-  getAllMembers(): Observable<any> {
-    return this.http.get(this.viewUrl);
-  }
-
-  getMemberById(id: number): Observable<any> {
-    return this.http.get(this.searchUrl + id);
-  }
-
-  updateMember(id: number, member: any): Observable<any> {
-    return this.http.put(this.updateUrl + id, member);
-  }
-
-  deleteMember(id: number): Observable<any> {
-    return this.http.delete(this.deleteUrl + id);
-  }
-}
-
-the above code is of add member
-
- <app-navbar></app-navbar>
-<section class="vh-100" style="background-color: #eee;">
-    <div class="container h-100">
-      <div class="row d-flex justify-content-center align-items-center h-100">
-        <div class="col-lg-12 col-xl-11">
-          <div class="card text-black" style="border-radius: 25px;">
-            <div class="card-body p-md-5">
-              <div class="row justify-content-center">
-                <div class="col-md-10 col-lg-6 col-xl-5 order-2 order-lg-1">
-  
-                  <p class="text-center h1 fw-bold mb-5 mx-1 mx-md-4 mt-4">Sign up</p>
-  
-                  <form #RegisterForm="ngForm" class="mx-1 mx-md-4" (ngSubmit)="validateR(RegisterForm)">
-  
-                    <div class="d-flex flex-row align-items-center mb-4">
-                      <i class="fas fa-user fa-lg me-3 fa-fw"></i>
-                      <div data-mdb-input-init class="form-outline flex-fill mb-0">
-                        <input ngModel name="name" type="text" id="form3Example1c" class="form-control" />
-                        <label class="form-label" for="form3Example1c">Your Name</label>
-                      </div>
-                    </div>
-  
-                    <div class="d-flex flex-row align-items-center mb-4">
-                      <i class="fas fa-envelope fa-lg me-3 fa-fw"></i>
-                      <div data-mdb-input-init class="form-outline flex-fill mb-0">
-                        <input ngModel name="email" type="email" id="form3Example3c" class="form-control" />
-                        <label class="form-label" for="form3Example3c">Your Email</label>
-                      </div>
-                    </div>
-  
-                    <div class="d-flex flex-row align-items-center mb-4">
-                      <i class="fas fa-lock fa-lg me-3 fa-fw"></i>
-                      <div data-mdb-input-init class="form-outline flex-fill mb-0">
-                        <input ngModel name="password" type="password" id="form3Example4c" class="form-control" />
-                        <label class="form-label" for="form3Example4c">Password</label>
-                      </div>
-                    </div>
-  
-                    <div class="d-flex flex-row align-items-center mb-4">
-                      <i class="fas fa-circle-user fa-lg me-2 fa-fw"></i>
-                      
-                      <div data-mdb-input-init class="form-outline flex-fill mb-0">
-                        <input ngModel name="roles" type="text" id="role" class="form-control" />
-                        <label class="form-label" for="role">Role</label>
-                      </div>
-                    </div>
-  
-                    <div class="d-flex justify-content-center mx-4 mb-3 mb-lg-4">
-                      <button  type="submit" data-mdb-button-init data-mdb-ripple-init class="btn btn-primary btn-lg" >Register</button>
-                    </div>
-  
-                  </form>
-  
-                </div>
-                <div class="col-md-10 col-lg-6 col-xl-7 d-flex align-items-center order-1 order-lg-2">
-  
-                  <img src="https://img.freepik.com/premium-vector/library-public-reading-room-with-bookcase-bookshelves-wooden-desks-chairs-computers_176411-1523.jpg?w=900"
-                    class="img-fluid" alt="Sample image">
-  
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>  
-
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
@@ -288,93 +13,50 @@ import { MemberService } from '../member.service';
 })
 export class RegisterComponent {
 
-  constructor(private router: Router, private authService: AuthService,private memberService: MemberService) { }
+  constructor(private router: Router, private authService: AuthService, private memberService: MemberService) { }
 
   validateR(form: NgForm) {
-    console.log('User Registeration')
-    this.authService.register(form.value).subscribe(response => console.log(response))
-    console.log('Member Registeration')
-    this.memberService.addMember(form.value).subscribe(response => console.log(response))
-    this.router.navigate(['/login'])
+    console.log('User Registration');
+
+    const userPayload = {
+      name: form.value.name,
+      email: form.value.email,
+      password: form.value.password,
+      roles: form.value.roles
+    };
+
+    const memberPayload = {
+      name: form.value.name,
+      email: form.value.email,
+        phone: form.value.phone,
+        address: form.value.address,
+        membershipStatus: form.value.membershipStatus
+      };
+
+    this.authService.register(userPayload).subscribe({
+      next: (response) => {
+        console.log('User registered:', response);
+
+        // After successful user registration, register member
+        console.log('Registering as Member');
+        this.memberService.addMember(memberPayload).subscribe({
+          next: (res) => {
+            console.log('Member registered:', res);
+            alert('Registration successful!');
+            this.router.navigate(['/login']);
+          },
+          error: (err) => {
+            console.error('Member registration failed:', err);
+            alert('Member registration failed.');
+          }
+        });
+      },
+      error: (err) => {
+        console.error('User registration failed:', err);
+        alert('User registration failed.');
+      }
+    });
   }
 }
 
 
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import {jwtDecode }from 'jwt-decode';
-
-
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-  
-  
-  pathL = "http://localhost:9090/auth/authenticate"  
-  pathR = "http://localhost:9090/auth/new"
-
-  constructor(private client: HttpClient) { }
-
-  public authenticate_User(authUser: User): Observable<string> {
-    console.log("Inside autheticate")
-    console.log(authUser)
-    return this.client.post(this.pathL, authUser, { responseType: 'text' });
-  }
-
- public register(register:RegisterUser): Observable<string> {
-    return this.client.post(this.pathR,register,{responseType: 'text'})
-  }
-
-  
-
-  getJWT():string
-  {
-    
-    return localStorage.getItem("JWT")
-  }
-  removeToken()
-  {
-    localStorage.removeItem("JWT")
-  }
-         
-
-}
-
-export class User {
-  username: string
-  password: string
-  constructor(username: string, password: string) {
-    this.username = username
-    this.password = password
-  }
-}
-export class RegisterUser{
-  username:string
-  email:string
-  password:string
-  roles:string
-  constructor(username: string,email:string,  password: string,roles:string)
-  {
-    this.username=username
-    this.email=email
-    this.password=password
-    this.roles=roles
-  }
-}
-export class addMember {
-  constructor(
-    public memberId: number,
-    public name: string,
-    public email: string,
-    public phone: string,
-    public address: string
-  ) { }
-}
-
-
-this the code of register
-
-Now the problem is i want to send the add member details during the time of the registeration only so that the memebrid generation and the userid generation will be same
