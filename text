@@ -1,174 +1,72 @@
-<app-navbar></app-navbar>
-
-<section class="vh-100" style="background-color: #eee;">
-  <div class="container h-100">
-    <div class="row d-flex justify-content-center align-items-center h-100">
-      <div class="col-lg-12 col-xl-11">
-        <div class="card text-black" style="border-radius: 25px;">
-          <div class="card-body p-md-5">
-            <div class="row justify-content-center">
-              <div class="col-md-10 col-lg-6 col-xl-5 order-2 order-lg-1">
-
-                <p class="text-center h1 fw-bold mb-5 mx-1 mx-md-4 mt-4">Sign up</p>
-
-                <form #RegisterForm="ngForm" class="mx-1 mx-md-4" (ngSubmit)="validateR(RegisterForm)">
-
-                  <!-- Name -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-user fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <input ngModel name="name" type="text" class="form-control" required />
-                      <label class="form-label">Your Name</label>
-                    </div>
-                  </div>
-
-                  <!-- Email -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-envelope fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <input ngModel name="email" type="email" class="form-control" required />
-                      <label class="form-label">Your Email</label>
-                    </div>
-                  </div>
-
-                  <!-- Password -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-lock fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <input ngModel name="password" type="password" class="form-control" required />
-                      <label class="form-label">Password</label>
-                    </div>
-                  </div>
-
-                  <!-- Role Select -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-circle-user fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <select [(ngModel)]="selectedRole" name="roles" class="form-control" required>
-                        <option value="" disabled selected>Select Role</option>
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                      <label class="form-label">Role</label>
-                    </div>
-                  </div>
-
-                  <!-- Phone -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-phone fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <input ngModel name="phone" type="text" class="form-control" />
-                      <label class="form-label">Phone</label>
-                    </div>
-                  </div>
-
-                  <!-- Address -->
-                  <div class="d-flex flex-row align-items-center mb-4">
-                    <i class="fas fa-location-dot fa-lg me-3 fa-fw"></i>
-                    <div class="form-outline flex-fill mb-0">
-                      <input ngModel name="address" type="text" class="form-control" />
-                      <label class="form-label">Address</label>
-                    </div>
-                  </div>
-
-                 <!-- Submit -->
-                  <div class="d-flex justify-content-center mx-4 mb-3 mb-lg-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Register</button>
-                  </div>
-
-                </form>
-
-              </div>
-
-              <!-- Image -->
-              <div class="col-md-10 col-lg-6 col-xl-7 d-flex align-items-center order-1 order-lg-2">
-                <img
-                  src="https://img.freepik.com/premium-vector/library-public-reading-room-with-bookcase-bookshelves-wooden-desks-chairs-computers_176411-1523.jpg?w=900"
-                  class="img-fluid" alt="Library image">
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 import { Component } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { FormsModule, NgForm } from '@angular/forms';
+import { NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService, RegisterUser } from '../auth.service';
-import { MemberService } from '../member.service';
 
 @Component({
   selector: 'app-register',
-  imports: [NavbarComponent,RouterLink,FormsModule],
   templateUrl: './register.component.html',
-  styleUrl: './register.component.css'
+  styleUrls: ['./register.component.css']
 })
 export class RegisterComponent {
 
+  selectedRole: string = '';
   member = {
     name: '',
     email: '',
     phone: '',
     address: '',
-    membershipStatus: ''
+    membershipStatus: 'Active'
   };
- 
-  selectedRole: string = '';
-  constructor(private router:Router, private authService:AuthService,){}
+
+  constructor(private authService: AuthService, private router: Router) {}
 
   validateR(form: NgForm) {
     if (!this.selectedRole) {
       alert('Please select a role!');
       return;
     }
-  
+
     const formData = form.value;
+
     const registerUser: RegisterUser = {
       username: formData.name,
       email: formData.email,
       password: formData.password,
       roles: this.selectedRole
     };
-  
-    // 1. Register the user (Auth)
+
+    // Register in auth
     this.authService.register(registerUser).subscribe({
       next: (response) => {
-        console.log('User registered in Auth:', response);
-  
+        console.log('Auth Registration Success:', response);
+
         if (this.selectedRole === 'member') {
-          const memberData = {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,        // Add proper phone field in form if needed
-            address:formData.address,      // Add address field too
-            membershipStatus: 'Active'  // Default status
-          };
-  
-          // 2. Add the member in Library system
-          this.authService.addMember(memberData).subscribe({
+          // Set member fields
+          this.member.name = formData.name;
+          this.member.email = formData.email;
+          this.member.phone = formData.phone;
+          this.member.address = formData.address;
+
+          // Call addMember API
+          this.authService.addMember(this.member).subscribe({
             next: (res) => {
-              console.log('Member stored in Library DB:', res);
+              console.log('Member Added:', res);
               alert('Member Registered Successfully!');
               this.router.navigate(['/login']);
             },
             error: (err) => {
-              console.error('Member saving failed:', err);
-              alert('User created, but member saving failed!');
+              console.error('Member Registration Failed:', err);
+              alert('User created, but member registration failed!');
             }
           });
-  
-        } else if (this.selectedRole === 'admin') {
+        } else {
           alert('Admin Registered Successfully!');
           this.router.navigate(['/login']);
         }
       },
       error: (err) => {
-        console.error('Auth registration failed:', err);
+        console.error('Auth Registration Failed:', err);
         alert('Registration failed. Please try again.');
       }
     });
@@ -177,95 +75,58 @@ export class RegisterComponent {
 
 <app-navbar></app-navbar>
 
-<div class="container " style="margin-top: 150px ;">
-  <div class="card shadow-sm">
+<div class="container" style="margin-top: 100px;">
+  <div class="card shadow">
     <div class="card-header bg-primary text-white">
-      <h3 class="mb-0">Add New Member</h3>
+      <h3 class="mb-0">Register</h3>
     </div>
     <div class="card-body">
-      <form (ngSubmit)="addMember()" #addForm="ngForm" novalidate>
+      <form (ngSubmit)="validateR(registerForm)" #registerForm="ngForm" novalidate>
+
+        <!-- Name -->
         <div class="mb-3">
           <label for="name" class="form-label">Name</label>
-          <input type="text" id="name" class="form-control" name="name" [(ngModel)]="member.name" required />
+          <input ngModel name="name" required type="text" class="form-control" />
         </div>
 
+        <!-- Email -->
         <div class="mb-3">
           <label for="email" class="form-label">Email</label>
-          <input type="email" id="email" class="form-control" name="email" [(ngModel)]="member.email" required />
+          <input ngModel name="email" required type="email" class="form-control" />
         </div>
 
+        <!-- Password -->
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input ngModel name="password" required type="password" class="form-control" />
+        </div>
+
+        <!-- Phone -->
         <div class="mb-3">
           <label for="phone" class="form-label">Phone</label>
-          <input type="text" id="phone" class="form-control" name="phone" [(ngModel)]="member.phone" required />
+          <input ngModel name="phone" required type="text" class="form-control" />
         </div>
 
+        <!-- Address -->
         <div class="mb-3">
           <label for="address" class="form-label">Address</label>
-          <input type="text" id="address" class="form-control" name="address" [(ngModel)]="member.address" required />
+          <input ngModel name="address" required type="text" class="form-control" />
         </div>
 
+        <!-- Role Dropdown -->
         <div class="mb-3">
-          <label for="membershipStatus" class="form-label">Membership Status</label>
-          <input type="text" id="membershipStatus" class="form-control" name="membershipStatus"
-            [(ngModel)]="member.membershipStatus" required />
+          <label for="role" class="form-label">Select Role</label>
+          <select ngModel name="role" required class="form-control" [(ngModel)]="selectedRole">
+            <option value="" disabled selected>Select a role</option>
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
 
-        <button type="submit" class="btn btn-success w-100" [disabled]="addForm.invalid">
-          Add Member
+        <button class="btn btn-success w-100" type="submit" [disabled]="registerForm.invalid">
+          Register
         </button>
       </form>
     </div>
   </div>
 </div>
-
-import { Component } from '@angular/core';
-import { MemberService } from '../member.service';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink, Router } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
- 
-@Component({
-  selector: 'app-member-add',  
-  imports: [RouterLink,FormsModule,CommonModule,NavbarComponent],
-  templateUrl: './member-add.component.html',  
-  styleUrls: ['./member-add.component.css']
-})
-export class MemberAddComponent {
-  member = {
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    membershipStatus: ''
-  };
- 
-  constructor(private memberService: MemberService,private route: ActivatedRoute, private router: Router,) {}
- 
-  addMember() {
-    this.memberService.addMember(this.member).subscribe({
-      next: (res) => {
-        alert('Member added successfully!');
-        console.log('Add Member Response:', res);
-        this.clearForm();
-      },
-      error: (err) => {
-        alert('Failed to add member!');
-        console.error('Add Member Error:', err);
-      }
-    });
-    this.router.navigate(['/member'])
-  }
- 
-  clearForm() {
-    this.member = {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      membershipStatus: ''
-    };
-  }
-}
-
-combine these code and make one this that is to register and also simultaniously add the member
