@@ -1,58 +1,41 @@
-/* Container styling */
-.container {
-  padding-top: 40px;
-  padding-bottom: 40px;
-  margin-top: 100px;
-}
+<app-navbar></app-navbar>
 
-/* Card design */
-.card {
-  border-radius: 15px;
-  transition: transform 0.3s, box-shadow 0.3s;
-  background-color: #fefefe;
-}
+<div class="container mt-5">
+  <h2 class="text-center text-primary mb-4">All Members</h2>
 
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-}
+  <div class="row row-cols-1 row-cols-md-3 g-4" *ngIf="members.length > 0; else noData">
+    <div class="col" *ngFor="let member of members">
+      <div class="card h-100 shadow">
+        <div class="card-body text-center">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/2288/2288510.png"
+            class="img-fluid rounded mb-3"
+            alt="Member Icon"
+          />
+          <h3 class="text-primary">Member Details</h3>
+          <p>
+            <strong>Name:</strong> {{ member.name }}<br />
+            <strong>Email:</strong> {{ member.email }}<br />
+            <strong>Phone:</strong> {{ member.phone }}<br />
+            <strong>Address:</strong> {{ member.address }}<br />
+            <strong>Status:</strong> {{ member.membershipStatus }}
+          </p>
+        </div>
+        <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
+          <button class="btn btn-success btn-sm w-100" (click)="payFine(member.memberId)">Pay Fine</button>
+          <button class="btn btn-warning btn-sm w-100" (click)="checkFine(member.memberId)">Check Fine</button>
+          <button class="btn btn-primary btn-sm w-100" (click)="updateMember(member.memberId)">Update</button>
+          <button class="btn btn-danger btn-sm w-100" (click)="deleteMember(member.memberId)">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-/* Image inside card */
-.card img {
-  height: 200px;
-  object-fit: cover;
-  border-radius: 10px;
-  margin: 0 auto;
-  width: 90%;
-}
+  <ng-template #noData>
+    <div class="alert alert-info text-center">No members found.</div>
+  </ng-template>
 
-/* Card title */
-.card h3 {
-  font-weight: 600;
-  font-size: 1.2rem;
-  color: #007bff;
-  margin-bottom: 10px;
-}
-
-/* Card body text */
-.card p {
-  font-size: 0.95rem;
-  margin-bottom: 6px;
-  color: #333;
-}
-
-/* Info message */
-.alert-info {
-  font-size: 1rem;
-  font-weight: 500;
-  border-radius: 10px;
-}
-
-/* Custom Ok button */
-.btn-custom {
-  background-color: #0d6efd;
-  color: white;
-  font-weight: 500;
-  margin-left: 570px;
-  margin-right: 570px;
-}
+  <div class="d-grid mt-5">
+    <button type="submit" class="btn btn-custom" routerLink="/member">Ok</button>
+  </div>
+</div>
