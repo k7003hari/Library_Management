@@ -1,41 +1,37 @@
-<app-navbar></app-navbar>
+payFine(memberId: number): void {
+  console.log('Pay fine for member:', memberId);
+  // Navigate or open modal
+}
 
-<div class="container mt-5">
-  <h2 class="text-center text-primary mb-4">All Members</h2>
+checkFine(memberId: number): void {
+  console.log('Check fine for member:', memberId);
+  // Call API or navigate
+}
 
-  <div class="row row-cols-1 row-cols-md-3 g-4" *ngIf="members.length > 0; else noData">
-    <div class="col" *ngFor="let member of members">
-      <div class="card h-100 shadow">
-        <div class="card-body text-center">
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/2288/2288510.png"
-            class="img-fluid rounded mb-3"
-            alt="Member Icon"
-          />
-          <h3 class="text-primary">Member Details</h3>
-          <p>
-            <strong>Name:</strong> {{ member.name }}<br />
-            <strong>Email:</strong> {{ member.email }}<br />
-            <strong>Phone:</strong> {{ member.phone }}<br />
-            <strong>Address:</strong> {{ member.address }}<br />
-            <strong>Status:</strong> {{ member.membershipStatus }}
-          </p>
-        </div>
-        <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
-          <button class="btn btn-success btn-sm w-100" (click)="payFine(member.memberId)">Pay Fine</button>
-          <button class="btn btn-warning btn-sm w-100" (click)="checkFine(member.memberId)">Check Fine</button>
-          <button class="btn btn-primary btn-sm w-100" (click)="updateMember(member.memberId)">Update</button>
-          <button class="btn btn-danger btn-sm w-100" (click)="deleteMember(member.memberId)">Delete</button>
-        </div>
-      </div>
-    </div>
-  </div>
+updateMember(memberId: number): void {
+  console.log('Update member:', memberId);
+  this.router.navigate(['/updateMember', memberId]);
+}
 
-  <ng-template #noData>
-    <div class="alert alert-info text-center">No members found.</div>
-  </ng-template>
+deleteMember(memberId: number): void {
+  console.log('Delete member:', memberId);
+  if (confirm('Are you sure you want to delete this member?')) {
+    this.memberService.deleteMember(memberId).subscribe(
+      () => {
+        alert('Member deleted successfully!');
+        this.loadMembers(); // reload members
+      },
+      (error) => {
+        console.error('Delete failed', error);
+        alert('Delete failed. Please try again.');
+      }
+    );
+  }
+}
 
-  <div class="d-grid mt-5">
-    <button type="submit" class="btn btn-custom" routerLink="/member">Ok</button>
-  </div>
-</div>
+
+.card-footer .btn {
+  font-size: 0.85rem;
+  border-radius: 8px;
+  padding: 6px 12px;
+}
