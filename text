@@ -1,3 +1,329 @@
+package com.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import com.dto.MemberDTO;
+
+@FeignClient(name = "MEMBERSERVICE", path = "/members")
+public interface MemberClient {
+
+	@GetMapping("/user/{username}")
+	MemberDTO getMemberByUsername(@PathVariable String username);
+
+}
+
+package com.config;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class ModelMapperConfig {
+
+    @Bean
+    public ModelMapper modelMapper() {
+        return new ModelMapper(); // No need for custom TypeMap
+    }
+}
+
+package com.controller;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.client.MemberClient;
+import com.dto.AuthRequest;
+import com.dto.MemberDTO;
+import com.entity.UserInfo;
+import com.repository.UserInfoRepository;
+import com.service.JwtService;
+import com.service.UserService;
+
+import lombok.AllArgsConstructor;
+
+@RestController
+@RequestMapping("/auth")
+//@CrossOrigin("*")
+@AllArgsConstructor
+public class AuthController {
+
+	private UserService service;
+	private JwtService jwtService;
+	private MemberClient memberClient;
+	private UserInfoRepository repo;
+	private AuthenticationManager authenticationManager;
+
+	@GetMapping("/welcome") // http://localhost:9090/auth/welcome
+	public String welcome() {
+		return "Welcome this endpoint is not secure";
+	}
+
+	@PostMapping("/new") // http://localhost:9090/auth/new
+	public String addNewUser(@RequestBody UserInfo userInfo) {
+		return service.addUser(userInfo);
+	}
+
+	@PostMapping("/authenticate")
+	public String authenticateAndGetToken(@RequestBody AuthRequest authRequest) {
+		Authentication authentication = authenticationManager.authenticate(
+				new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
+
+		if (authentication.isAuthenticated()) {
+			UserInfo user = repo.findByName(authRequest.getUsername()).orElse(null);
+
+			Long memberId = null;
+			if (user.getRoles().contains("MEMBER")) {
+				try {
+					MemberDTO member = memberClient.getMemberByUsername(authRequest.getUsername());
+					memberId = member.getMemberId();
+					System.out.println("Extracted member value"+member.getMemberId());
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.out.println("Member service not available or user not found.");
+				}
+			}
+
+			return jwtService.generateToken(authRequest.getUsername(), user.getRoles(), user.getId(), user.getEmail(),
+					memberId);
+		} else {
+			throw new UsernameNotFoundException("Invalid user request!");
+		}
+		
+	}
+
+	@GetMapping("/getroles/{username}") // http://localhost:9090/auth/getroles/{username}
+	public String getRoles(@PathVariable String username) {
+		return service.getRoles(username);
+	}
+}
+package com.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MemberDTO {
+	private Long memberId;
+	private String name;
+	private String email;
+	private String phone;
+	private String address;
+	private String membershipStatus;
+}
+package com.filter;
+
+import java.io.IOException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.config.UserInfoUserDetailsService;
+import com.service.JwtService;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UserInfoUserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        String username = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+            username = jwtService.extractUsername(token);
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            if (jwtService.validateToken(token, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+
+package com.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.entity.UserInfo;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
+    Optional<UserInfo> findByName(String username);
+
+}
+
+package com.service;
+
+import java.security.Key;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+import com.SpringSecurityLatestApplication;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+@Component
+public class JwtService {
+
+    private final SpringSecurityLatestApplication springSecurityLatestApplication;
+
+	public static final String SECRET = "d3780ec3d1cfaba271e0538d4fae686d8367e10155ee424691fbf191eabec53d";
+
+    JwtService(SpringSecurityLatestApplication springSecurityLatestApplication) {
+        this.springSecurityLatestApplication = springSecurityLatestApplication;
+    }
+
+	public String extractUsername(String token) {
+		return extractClaim(token, Claims::getSubject);
+	}
+
+	public Date extractExpiration(String token) {
+		return extractClaim(token, Claims::getExpiration);
+	}
+
+	public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+		final Claims claims = extractAllClaims(token);
+		return claimsResolver.apply(claims);
+	}
+
+	private Claims extractAllClaims(String token) {
+		return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token).getBody();
+	}
+
+	private Boolean isTokenExpired(String token) {
+		return extractExpiration(token).before(new Date());
+	}
+
+	public Boolean validateToken(String token, UserDetails userDetails) {
+		final String username = extractUsername(token);
+		return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+	}
+
+	public String generateToken(String userName, String roles, int userId, String email, Long memberId) {
+	    Map<String, Object> claims = new HashMap<>();
+	    claims.put("roles", roles);
+	    claims.put("userId", userId);
+	    claims.put("email", email);
+	    claims.put("memberId",memberId);
+	    return createToken(claims, userName);
+	}
+
+
+	private String createToken(Map<String, Object> claims, String userName) {
+		System.out.println("all claims: "+claims);
+		return Jwts.builder().setClaims(claims).setSubject(userName).setIssuedAt(new Date(System.currentTimeMillis()))
+				.setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
+				.signWith(getSignKey(), SignatureAlgorithm.HS256).compact();
+		
+	}
+
+	private Key getSignKey() {
+		byte[] keyBytes = Decoders.BASE64.decode(SECRET);
+		return Keys.hmacShaKeyFor(keyBytes);
+	}
+	
+	public Long extractMemberId(String token) {
+	    Claims claims = extractAllClaims(token);
+	    System.out.print("All claims: "+claims);
+	    Object memberIdClaim = claims.get("memberId");
+	    if (memberIdClaim instanceof Integer) {
+	        return ((Integer) memberIdClaim).longValue();
+	    } else if (memberIdClaim instanceof Long) {
+	        return (Long) memberIdClaim;
+	    } else if (memberIdClaim instanceof String) {
+	        return Long.parseLong((String) memberIdClaim);
+	    }
+	    return null;
+	}
+}
+
+package com.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.entity.UserInfo;
+import com.repository.UserInfoRepository;
+
+@Service
+public class UserService {
+	@Autowired
+	private UserInfoRepository repository;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
+	public String addUser(UserInfo userInfo) {
+		String name = userInfo.getName();
+		UserInfo obj1 = repository.findByName(name).orElse(null);
+		System.out.println(obj1);
+		if (obj1 == null) {
+			userInfo.setPassword(passwordEncoder.encode(userInfo.getPassword()));
+			repository.save(userInfo);
+			return "Registration Successfully ";
+		} else {
+			return "This UserName is Already Registered.";
+		}
+	}
+
+	public String getRoles(String username) {
+		UserInfo obj2 = repository.findByName(username).orElse(null);
+		if (obj2 != null) {
+			return obj2.getRoles();
+		}
+		return "Not Found";
+	}
+}
+above code is all about the spring-security-latest microservice
+
 package com.cts.config;
  
 import org.modelmapper.ModelMapper;
@@ -12,4 +338,282 @@ public class ModelMapperConfig {
         return new ModelMapper();
     }
     
+}
+package com.cts.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.cts.exception.MemberNotFoundException;
+import com.cts.memberDTO.MemberDTO;
+import com.cts.model.Member;
+import com.cts.repository.MemberRepository;
+import com.cts.service.MemberService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@RestController
+@RequestMapping("/members")
+@RequiredArgsConstructor
+@Slf4j
+@Validated
+public class MemberController {
+
+	private MemberService memberService;
+	private MemberRepository memberRepository;
+
+	@PostMapping("/regMember")
+	public Member registerMember(@RequestBody Member member) {
+		log.info("POST /members");
+		return memberService.registerMember(member);
+	}
+
+	@GetMapping("/user/{username}")
+	public MemberDTO getMemberByUsername(@PathVariable String username) {
+		MemberDTO member = memberRepository.findByEmail(username)
+				.orElseThrow(() -> new MemberNotFoundException("Member not found with email: " + username));
+
+		return new MemberDTO(member.getMemberId(), member.getName(), member.getEmail(), member.getPhone(),
+				member.getAddress(), member.getMembershipStatus());
+	}
+
+	@PutMapping("update/{id}")
+	public Member updateMember(@PathVariable Long id, @Valid @RequestBody Member member) {
+		log.info("PUT /members/{}", id);
+		return memberService.updateMember(id, member);
+	}
+
+	@GetMapping("/email/{email}")
+	public ResponseEntity<MemberDTO> getMemberByEmail(@PathVariable String email) {
+		MemberDTO memberDto = memberService.getMemberByEmail(email);
+		return new ResponseEntity<>(memberDto, HttpStatus.OK);
+	}
+
+	@GetMapping("/getallMember")
+	public List<Member> getAllMember() {
+		return memberService.getAllMember();
+	}
+
+	@GetMapping("/{memberId}")
+	public Member getMemberById(@PathVariable Long memberId) {
+		log.info("GET /members/{}", memberId);
+		return memberService.getMemberById(memberId);
+	}
+
+	@DeleteMapping("/delete/{id}")
+	public ResponseEntity<String> deleteMember(@PathVariable Long id) {
+		memberService.deleteById(id);
+		return ResponseEntity.ok("Member deleted successfully");
+	}
+}
+
+package com.cts.memberDTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MemberDTO {
+	private Long memberId;
+	private String name;
+	private String email;
+	private String phone;
+	private String address;
+	private String membershipStatus;
+}
+package com.cts.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "member")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Member {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long Id;
+
+	@NotBlank(message = "Name must not be blank")
+	@Size(min = 2, message = "Name must be at least 2 characters")
+	private String name;
+
+	@Email(message = "Email should be valid")
+	@NotBlank(message = "Email must not be blank")
+	private String email;
+
+	@Pattern(regexp = "\\d{10}", message = "Phone number must be 10 digits")
+	private String phone;
+
+	@NotBlank(message = "Address must not be blank")
+	private String address;
+
+	@NotBlank(message = "Membership status must be provided")
+	private String membershipStatus;
+}
+
+package com.cts.repository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.cts.memberDTO.MemberDTO;
+import com.cts.model.Member;
+
+public interface MemberRepository extends JpaRepository<Member, Long> {
+	Optional<MemberDTO> findByEmail(String email);
+
+	Optional<Member> findByName(String name);
+
+
+}
+
+package com.cts.service;
+
+import java.util.List;
+
+import com.cts.memberDTO.MemberDTO;
+import com.cts.model.Member;
+
+public interface MemberService {
+
+	Member registerMember(Member member);
+
+	Member updateMember(Long memberId, Member member);
+
+	MemberDTO getMemberByEmail( String requesterEmail);
+	
+	Member getMemberById(Long memberId);
+
+	MemberDTO getMemberByUsername(String username);
+
+	List<Member> getAllMember();
+	
+	void deleteById(Long id);
+	     
+}
+
+package com.cts.service;
+
+import java.util.List;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.stereotype.Service;
+
+import com.cts.exception.MemberNotFoundException;
+import com.cts.exception.ResourceNotFoundException;
+import com.cts.memberDTO.MemberDTO;
+import com.cts.model.Member;
+import com.cts.repository.MemberRepository;
+
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@Slf4j
+@AllArgsConstructor
+public class MemberServiceImpl implements MemberService {
+
+	private final MemberRepository memberRepository;
+	private final ModelMapper modelMapper;
+
+	@Override
+	public Member registerMember(Member member) {
+		log.info("Registering new member: {}", member.getEmail());
+		Member saved = memberRepository.save(member);
+		log.info("Member registered successfully with ID: {}", saved.getId());
+		return saved;
+	}
+
+	@Override
+	public Member updateMember(Long memberId, Member member) {
+		log.info("Updating member: {}", memberId);
+		Member existingMember = memberRepository.findById(memberId).orElseThrow(() -> {
+			log.error("Update failed: Member not found with ID: {}", memberId);
+			return new MemberNotFoundException("Member not found with ID: " + memberId);
+		});
+		existingMember.setName(member.getName());
+		existingMember.setEmail(member.getEmail());
+		existingMember.setPhone(member.getPhone());
+		existingMember.setAddress(member.getAddress());
+		existingMember.setMembershipStatus(member.getMembershipStatus());
+		memberRepository.save(existingMember);
+		log.info("Member updated successfully with ID: {}", memberId);
+		return existingMember;
+	}
+
+	@Override
+	public MemberDTO getMemberByUsername(String username) {
+		Member member = memberRepository.findByName(username)
+				.orElseThrow(() -> new MemberNotFoundException("Member not found with username: " + username));
+		return modelMapper.map(member, MemberDTO.class);
+	}
+
+	@Override
+	public List<Member> getAllMember() {
+		log.debug("Fetching all Member");
+		return memberRepository.findAll();
+	}
+
+	@Override
+	public MemberDTO getMemberByEmail(String email) {
+		MemberDTO memberDto = memberRepository.findByEmail(email)
+				.orElseThrow(() -> new ResourceNotFoundException("Member", "Email", email));
+		return modelMapper.map(getAllMember(), MemberDTO.class);
+	}
+
+	@Override
+	public Member getMemberById(Long memberId) {
+		log.info("Fetching member by ID {}", memberId);
+		return memberRepository.findById(memberId).orElseThrow(() -> {
+			log.error("Member not found with ID: {}", memberId);
+			return new MemberNotFoundException("Member not found with ID: " + memberId);
+		});
+	}
+
+	@Override
+	public void deleteById(Long id) {
+		log.info("Attempting to delete member with ID: {}", id);
+		if (!memberRepository.existsById(id)) {
+			log.error("Delete failed: Member not found with ID: {}", id);
+			throw new MemberNotFoundException("Member not found with ID: " + id);
+		}
+		memberRepository.deleteById(id);
+		log.info("Member deleted successfully with ID: {}", id);
+	}
+
 }
