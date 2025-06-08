@@ -3,26 +3,25 @@
 <div class="container" style="margin-top: 100px;">
   <div class="text-center mt-3 mb-4">
     <div *ngIf="userRole === 'member'" class="alert alert-info text-center">
-  Logged in as: {{ members[0]?.email }}
-</div>
+      Logged in as: {{ members[0]?.email }}
+    </div>
     <h2 class="text-primary">👥 Member Module</h2>
     <p class="text-muted mb-5">Manage all member-related operations from here</p>
   </div>
 
- <!-- 🔍 Search for Admin -->
-<div class="row mb-5 justify-content-center" *ngIf="userRole === 'admin'">
-  <div class="col-md-6">
-    <div class="card shadow-sm p-4">
-      <h5 class="text-primary mb-3 text-center">Search Member by ID or Email</h5>
-      <input type="number" [(ngModel)]="memberId" class="form-control mb-3" placeholder="Enter Member ID" />
-      <input type="email" [(ngModel)]="memberEmail" class="form-control mb-3" placeholder="Enter Member Email" />
-       <button class="btn btn-primary w-100" (click)="searchMember()">
-        <i class="bi bi-search"></i> Search
-      </button>
+  <!-- 🔍 Search for Admin -->
+  <div class="row mb-5 justify-content-center" *ngIf="userRole === 'admin'">
+    <div class="col-md-6">
+      <div class="card shadow-sm p-4">
+        <h5 class="text-primary mb-3 text-center">Search Member by ID or Email</h5>
+        <input type="number" [(ngModel)]="memberId" class="form-control mb-3" placeholder="Enter Member ID" />
+        <input type="email" [(ngModel)]="memberEmail" class="form-control mb-3" placeholder="Enter Member Email" />
+        <button class="btn btn-primary w-100" (click)="searchMember()">
+          <i class="bi bi-search"></i> Search
+        </button>
+      </div>
     </div>
   </div>
-</div>
-
 
   <!-- ✅ Searched Member -->
   <div *ngIf="member" class="row justify-content-center">
@@ -37,7 +36,7 @@
           <p><strong>Status:</strong> {{ member.membershipStatus }}</p>
         </div>
         <div class="card-footer text-center">
-          <button class="btn btn-outline-secondary" routerLink="/memberUpDel">OK</button>
+          <button class="btn btn-outline-secondary" (click)="member = null">OK</button>
         </div>
       </div>
     </div>
@@ -63,7 +62,7 @@
             <p><strong>Status:</strong> {{ member.membershipStatus }}</p>
           </div>
           <div class="card-footer d-flex flex-wrap justify-content-center gap-2 p-3">
-            <button  class="btn btn-outline-warning" (click)="updateMember(member.memberId)">
+            <button class="btn btn-outline-warning" (click)="updateMember(member.memberId)">
               <i class="bi bi-pencil-square"></i> Update
             </button>
             <button *ngIf="userRole === 'admin'" class="btn btn-outline-danger" (click)="deleteMember(member.memberId)">
@@ -103,69 +102,7 @@
   </div>
 </div>
 
-// import { Component, OnInit } from '@angular/core';
-// import { MemberService } from '../member.service';
-// import { CommonModule } from '@angular/common';
-// import { FormsModule } from '@angular/forms';
-// import {  Router, RouterLink } from '@angular/router';
-// import { NavbarComponent } from '../navbar/navbar.component';
 
-// @Component({
-//   selector: 'app-member-up-del',
-//   standalone:true,
-//   imports: [RouterLink,FormsModule,CommonModule,NavbarComponent],
-//   templateUrl: './member-up-del.component.html',
-//   styleUrls: ['./member-up-del.component.css']
-// })
-// export class MemberUpDelComponent implements OnInit {
-//   members: any[] = [];
-//   memberId: number = 0;
-//   member: any = null;
-
-
-//   constructor(private memberService: MemberService, private router: Router) {}
-
-//   ngOnInit(): void {
-//     this.loadMembers();
-//   }
-
-//   loadMembers(): void {
-//     this.memberService.getAllMembers().subscribe(data => {
-//       this.members = data;
-//     });
-//   }
-
-//   updateMember(memberId: number): void {
-//     this.router.navigate(['/updateMember', memberId]);
-//   }
-
-//   deleteMember(memberId: number): void {
-//     if (confirm('Are you sure you want to delete this member?')) {
-//       this.memberService.deleteMember(memberId).subscribe(() => {
-//         alert("Deleted successfully");
-//         this.loadMembers();
-//       });
-//     }
-//   }
-//   searchMember() {
-//     if (!this.memberId) {
-//       alert('Please enter a valid Member ID');
-//       return;
-//     }
-
-//     this.memberService.getMemberById(this.memberId).subscribe({
-//       next: (data) => {
-//         this.member = data;
-//         console.log('Member found:', data);
-//       },
-//       error: (error) => {
-//         alert('Member not found.');
-//         this.member = null;
-//         console.error('Error fetching member:', error);
-//       }
-//     });
-// }
-// }
 
 import { Component, OnInit } from '@angular/core';
 import { MemberService } from '../member.service';
@@ -174,7 +111,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { jwtDecode } from 'jwt-decode';
- 
+
 @Component({
   selector: 'app-member-up-del',
   standalone: true,
@@ -185,87 +122,67 @@ import { jwtDecode } from 'jwt-decode';
 export class MemberUpDelComponent implements OnInit {
   members: any[] = [];
   member: any = null;
-  memberId: any;
-  userRole: string = '';
-  loggedInMemberId: number = 0;
-  loggedInEmail: string = '';
+  memberId: number | null = null;
   memberEmail: string = '';
- 
+  userRole: string = '';
+  loggedInEmail: string = '';
+
   constructor(private memberService: MemberService, private router: Router) {}
- 
+
   ngOnInit(): void {
     this.extractRoleAndThenLoadMembers();
-    
   }
- 
+
   extractRoleAndThenLoadMembers(): void {
     const token = localStorage.getItem('JWT');
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
         this.userRole = decoded.role || decoded.roles || '';
-        this.loggedInMemberId = decoded.userId;
-  this.loggedInEmail = decoded.email;
-   
+        this.loggedInEmail = decoded.email;
         localStorage.setItem('memberId', decoded.userId);
-  localStorage.setItem('email', decoded.email);
-   
-        console.log('Decoded Role:', this.userRole);
-        console.log('Decoded Email:', this.loggedInEmail);
-   
+        localStorage.setItem('email', decoded.email);
         this.loadMembers();
       } catch (err) {
         console.error('Failed to decode JWT', err);
       }
     }
   }
- 
+
   loadMembers(): void {
     if (this.userRole === 'admin') {
       this.memberService.getAllMembers().subscribe({
-        next: (data) => {
-          this.members = data;
-        },
-        error: (err) => {
-          console.error('Error loading members', err);
-        }
+        next: (data) => this.members = data,
+        error: (err) => console.error('Error loading members', err)
       });
     } else if (this.userRole === 'member') {
       const email = localStorage.getItem('email');
-      console.log('Fetching the member by email:', email);
       if (email) {
         this.memberService.getMemberByEmail(email).subscribe({
-          next: (data) => {
-            this.members = [data];
-          },
-          error: (err) => {
-            console.error('Error fetching member by email', err);
-          }
+          next: (data) => this.members = [data],
+          error: (err) => console.error('Error fetching member by email', err)
         });
       }
     }
   }
- 
+
   updateMember(memberId: number): void {
     this.router.navigate(['/updateMember', memberId]);
   }
- 
+
   deleteMember(memberId: number): void {
     if (confirm('Are you sure you want to delete this member?')) {
       this.memberService.deleteMember(memberId).subscribe(() => {
-        this.members = this.members.filter(member => member.memberId !== memberId);
+        this.members = this.members.filter(m => m.memberId !== memberId);
+        alert('Deleted successfully');
       });
     }
   }
- 
-  
 
   searchMember(): void {
     if (this.memberId) {
       this.memberService.getMemberById(this.memberId).subscribe({
-        next: (data) => {
-          this.member = data;
-        },
+        next: (data) => this.member = data,
         error: () => {
           alert('Member not found by ID.');
           this.member = null;
@@ -273,9 +190,7 @@ export class MemberUpDelComponent implements OnInit {
       });
     } else if (this.memberEmail) {
       this.memberService.getMemberByEmail(this.memberEmail).subscribe({
-        next: (data) => {
-          this.member = data;
-        },
+        next: (data) => this.member = data,
         error: () => {
           alert('Member not found by email.');
           this.member = null;
@@ -285,53 +200,16 @@ export class MemberUpDelComponent implements OnInit {
       alert('Please enter a Member ID or Email to search.');
     }
   }
-  
- 
+
   checkfine(): void {
     this.router.navigate(['/fineCal']);
   }
- 
+
   pay(): void {
     this.router.navigate(['/finePay']);
   }
 }
 
-// import { Injectable } from '@angular/core';
-// import { HttpClient } from '@angular/common/http';
-// import { Observable } from 'rxjs';
-
-// @Injectable({
-//   providedIn: 'root'
-// })
-// export class MemberService {
-//   private addUrl = 'http://localhost:9090/members/regMember';
-//   private viewUrl = 'http://localhost:9090/members/getallMember';
-//   private searchUrl = 'http://localhost:9090/members/';
-//   private updateUrl = 'http://localhost:9090/members/update/';
-//   private deleteUrl = 'http://localhost:9090/members/delete/';
-
-//   constructor(private http: HttpClient) {}
-
-//   addMember(member: any): Observable<any> {
-//     return this.http.post(this.addUrl, member);
-//   }
-
-//   getAllMembers(): Observable<any> {
-//     return this.http.get(this.viewUrl);
-//   }
-
-//   getMemberById(id: number): Observable<any> {
-//     return this.http.get(this.searchUrl + id);
-//   }
-
-//   updateMember(id: number, member: any): Observable<any> {
-//     return this.http.put(this.updateUrl + id, member);
-//   }
-
-//   deleteMember(id: number): Observable<any> {
-//     return this.http.delete(this.deleteUrl + id);
-//   }
-// }
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -341,175 +219,31 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class MemberService {
-  private addUrl = 'http://localhost:9090/members/regMember';
-  private viewUrl = 'http://localhost:9090/members/getallMember';
-  private searchUrl = 'http://localhost:9090/members/';
-  private updateUrl = 'http://localhost:9090/members/update/';
-  private deleteUrl = 'http://localhost:9090/members/delete/';
-  private emailUrl = 'http://localhost:9090/members/getByEmail/';
+  private baseUrl = 'http://localhost:9090/members';
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
-  addMember(member: any): Observable<any> {
-    return this.http.post(this.addUrl, member);
-  }
-
-  getAllMembers(): Observable<any> {
-    return this.http.get(this.viewUrl);
+  getAllMembers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/getallMember`);
   }
 
   getMemberById(id: number): Observable<any> {
-    return this.http.get(this.searchUrl + id);
+    return this.http.get<any>(`${this.baseUrl}/${id}`);
+  }
+
+  getMemberByEmail(email: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/email/${email}`);
+  }
+
+  deleteMember(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/delete/${id}`);
   }
 
   updateMember(id: number, member: any): Observable<any> {
-    return this.http.put(this.updateUrl + id, member);
+    return this.http.put<any>(`${this.baseUrl}/update/${id}`, member);
   }
 
-  deleteMember(id: number): Observable<any> {
-    return this.http.delete<void>(this.deleteUrl + id);
+  addMember(member: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/regMember`, member);
   }
-
-
-  getMemberByEmail(email: string): Observable<any> {
-    return this.http.get(`${this.emailUrl}${email}`);
-  }
-
-}
-
-
-package com.cts.controller;
-
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.cts.model.Member;
-import com.cts.service.MemberService;
-
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-@RestController
-@RequestMapping("/members")
-@RequiredArgsConstructor
-@Slf4j
-@Validated
-public class MemberController {
-
-    @Autowired
-    private MemberService memberService;
-
-    @PostMapping("/regMember")
-    public Member registerMember(@RequestBody Member member) {
-        log.info("POST /members");
-        return memberService.registerMember(member);
-    }
-
-    @PutMapping("update/{id}")
-    public Member updateMember(@PathVariable Long id, @Valid @RequestBody Member member) {
-        log.info("PUT /members/{}", id);
-        return memberService.updateMember(id, member);
-    }
-
-    @GetMapping("/getByEmail/{email}")
-    public Member getMember(@PathVariable("email") String email) {
-        log.info("GET /members/{}", email);
-        return memberService.getMemberByMail(email);
-    }    
-    
-    @GetMapping("/getallMember")
-	public List<Member> getAllMember() {
-		return memberService.getAllMember();
-	}
-
-
-    @GetMapping("/{memberId}")
-    public Member getMemberById(@PathVariable Long memberId) {
-        log.info("GET /members/{}", memberId);
-        return memberService.getMemberById(memberId);
-    }
-}
-
-
-package com.cts.service;
-
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import com.cts.exception.MemberNotFoundException;
-import com.cts.model.Member;
-import com.cts.repository.MemberRepository;
-
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-@Service
-@Slf4j
-@AllArgsConstructor
-public class MemberServiceImpl implements MemberService {
-
-	private final MemberRepository memberRepository;
-
-	@Override
-	public Member registerMember(Member member) {
-		log.info("Registering new member: {}", member.getEmail());
-		Member saved = memberRepository.save(member);
-		log.info("Member registered successfully with ID: {}", saved.getMemberId());
-		return saved;
-	}
-
-	@Override
-	public Member updateMember(Long memberId, Member member) {
-		log.info("Updating member: {}", memberId);
-		Member existingMember = memberRepository.findById(memberId).orElseThrow(() -> {
-			log.error("Update failed: Member not found with ID: {}", memberId);
-			return new MemberNotFoundException("Member not found with ID: " + memberId);
-		});
-		existingMember.setName(member.getName());
-		existingMember.setEmail(member.getEmail());
-		existingMember.setPhone(member.getPhone());
-		existingMember.setAddress(member.getAddress());
-		existingMember.setMembershipStatus(member.getMembershipStatus());
-		memberRepository.save(existingMember);
-		log.info("Member updated successfully with ID: {}", memberId);
-		return existingMember;
-	}
-	
-	@Override
-	public List<Member> getAllMember() {
-	    log.debug("Fetching all Member");
-	    return memberRepository.findAll();
-	}
-
-	@Override
-	public Member getMemberByMail(String requesterEmail) {
-	    log.info("Fetching member by email: {}", requesterEmail);
-	    Member member = memberRepository.findByEmail(requesterEmail)
-	        .orElseThrow(() -> {
-	            log.error("Member not found with email: {}", requesterEmail);
-	            return new MemberNotFoundException("Member not found with email: " + requesterEmail);
-	        });
-	    return member;
-	}
-
-
-	@Override
-	public Member getMemberById(Long memberId) {
-		log.info("Fetching member by ID {}", memberId);
-		return memberRepository.findById(memberId).orElseThrow(() -> {
-			log.error("Member not found with ID: {}", memberId);
-			return new MemberNotFoundException("Member not found with ID: " + memberId);
-		});
-	}
 }
