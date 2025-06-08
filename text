@@ -1,66 +1,77 @@
 @Override
-	public BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO) {
-	logger.info("Attempting to borrow book with ID: {} for member ID: {}", transactionDTO.getBookId(), transactionDTO.getMemberId());
-	 
-	    // Validate member and book
-	    memberClient.getMember(transactionDTO.getMemberId()); // Ensure member exists
-	    bookClient.getBook(transactionDTO.getBookId());       // Ensure book exists
-	 
-	    // Check for borrowing limit
-	    long activeBorrowings = repository.findByMemberIdAndStatus(transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED).size();
-	    if (activeBorrowings >= 5) {
-	        logger.warn("Borrowing limit exceeded for member ID: {}", transactionDTO.getMemberId());
-	        throw new BorrowingNotAllowedException("Borrowing limit exceeded");
-	    }
-	 
-	    // Check if the same book is already borrowed by the same member
-	    boolean alreadyBorrowedSameBook = repository
-	        .findByBookIdAndMemberIdAndStatus(transactionDTO.getBookId(), transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED)
-	        .isPresent();
-	 
-	    if (alreadyBorrowedSameBook) {
-	        logger.warn("Member ID: {} is already borrowing Book ID: {}", transactionDTO.getMemberId(), transactionDTO.getBookId());
-	        throw new BorrowingNotAllowedException("Book is already borrowed by this member");
-	    }
-	 
-	    // Create new borrowing transaction
-	    BorrowingTransaction tx = BorrowingTransaction.builder()
-	            .bookId(transactionDTO.getBookId())
-	            .memberId(transactionDTO.getMemberId())
-	            .borrowDate(LocalDate.now())
-	            .status(BorrowingTransaction.Status.BORROWED)
-	            .build();
-	 
-	    repository.save(tx);
-	    log.info("New Booking is added");
-		String msg="Successfully borrowed  :"+transactionDTO.getBookId()+" Book by Member "+transactionDTO.getMemberId()+" ";
-		mailClient.sendEmail("ms12032004tsi@gmail.com","Hotel Booking System",msg);
-	logger.info("Book borrowed successfully: Book ID={}, Member ID={}", transactionDTO.getBookId(), transactionDTO.getMemberId());
-	    return tx;
-	}
-	
-	@Override
-	public List<BorrowingTransaction> getAllBorrows() {
-	    log.debug("Fetching all Borrows");
-	    return repository.findAll();
-	}
+public BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO) {
+    logger.info("Attempting to borrow book with ID: {} for member ID: {}", transactionDTO.getBookId(), transactionDTO.getMemberId());
 
+    // Validate member and book
+    MemberDTO member = memberClient.getMember(transactionDTO.getMemberId()); // Ensure member exists and get details
+    bookClient.getBook(transactionDTO.getBookId());                          // Ensure book exists
 
-	@Override
-	public BorrowingTransaction returnBook(Long memberId, Long bookId) {
-		logger.info("Attempting to return book with ID: {} for member ID: {}", bookId, memberId);
+    // Check for borrowing limit
+    long activeBorrowings = repository.findByMemberIdAndStatus(transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED).size();
+    if (activeBorrowings >= 5) {
+        logger.warn("Borrowing limit exceeded for member ID: {}", transactionDTO.getMemberId());
+        throw new BorrowingNotAllowedException("Borrowing limit exceeded");
+    }
 
-		BorrowingTransaction tx = repository
-				.findByBookIdAndMemberIdAndStatus(bookId, memberId, BorrowingTransaction.Status.BORROWED)
-				.orElseThrow(() -> {
-					logger.error("No active borrowing found for book ID: {} and member ID: {}", bookId, memberId);
-					return new BorrowingTransactionNotFoundException("No active borrowing found");
-				});
+    // Check if the same book is already borrowed by the same member
+    boolean alreadyBorrowedSameBook = repository
+        .findByBookIdAndMemberIdAndStatus(transactionDTO.getBookId(), transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED)
+        .isPresent();
 
-		tx.setStatus(BorrowingTransaction.Status.RETURNED);
-		tx.setReturnDate(LocalDate.now());
-		repository.save(tx);
+    if (alreadyBorrowedSameBook) {
+        logger.warn("Member ID: {} is already borrowing Book ID: {}", transactionDTO.getMemberId(), transactionDTO.getBookId());
+        throw new BorrowingNotAllowedException("Book is already borrowed by this member");
+    }
 
-		logger.info("Book returned successfully: Book ID={}, Member ID={}", bookId, memberId);
-		return tx;
-	}
+    // Create new borrowing transaction
+    BorrowingTransaction tx = BorrowingTransaction.builder()
+            .bookId(transactionDTO.getBookId())
+            .memberId(transactionDTO.getMemberId())
+            .borrowDate(LocalDate.now())
+            .status(BorrowingTransaction.Status.BORROWED)
+            .build();
+
+    repository.save(tx);
+    logger.info("New borrowing transaction is added");
+
+    // Send email notification to the member
+    String subject = "Library Notification: Book Borrowed";
+    String message = String.format("Dear %s,\n\nYou have successfully borrowed the book with ID: %d on %s.\n\nHappy reading!\nLibrary Team",
+            member.getName(),
+            transactionDTO.getBookId(),
+            LocalDate.now().toString());
+    mailClient.sendEmail(member.getEmail(), subject, message);
+
+    logger.info("Book borrowed successfully: Book ID={}, Member ID={}", transactionDTO.getBookId(), transactionDTO.getMemberId());
+    return tx;
+}
+
+@Override
+public BorrowingTransaction returnBook(Long memberId, Long bookId) {
+    logger.info("Attempting to return book with ID: {} for member ID: {}", bookId, memberId);
+
+    BorrowingTransaction tx = repository
+            .findByBookIdAndMemberIdAndStatus(bookId, memberId, BorrowingTransaction.Status.BORROWED)
+            .orElseThrow(() -> {
+                logger.error("No active borrowing found for book ID: {} and member ID: {}", bookId, memberId);
+                return new BorrowingTransactionNotFoundException("No active borrowing found");
+            });
+
+    tx.setStatus(BorrowingTransaction.Status.RETURNED);
+    tx.setReturnDate(LocalDate.now());
+    repository.save(tx);
+
+    // Fetch member info to send email
+    MemberDTO member = memberClient.getMember(memberId);
+
+    // Send email notification to the member
+    String subject = "Library Notification: Book Returned";
+    String message = String.format("Dear %s,\n\nYou have successfully returned the book with ID: %d on %s.\n\nThank you!\nLibrary Team",
+            member.getName(),
+            bookId,
+            LocalDate.now().toString());
+    mailClient.sendEmail(member.getEmail(), subject, message);
+
+    logger.info("Book returned successfully: Book ID={}, Member ID={}", bookId, memberId);
+    return tx;
+}
