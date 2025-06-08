@@ -1,13 +1,111 @@
-package com.cts.feign;
+package com.cts.service;
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "NOTIFICATIONSERVICE", path = "/email")
-public interface MailClient {
-	@PostMapping("/send")
-	public String sendEmail(@RequestParam String recipient, @RequestParam String subject,
-			@RequestParam String message) ;
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.exception.BorrowingNotAllowedException;
+import com.cts.exception.BorrowingTransactionNotFoundException;
+import com.cts.feign.BookClient;
+import com.cts.feign.MailClient;
+import com.cts.feign.MemberClient;
+import com.cts.model.BorrowingTransaction;
+import com.cts.model.BorrowingTransaction.Status;
+import com.cts.repository.BorrowingRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class BorrowingServiceImpl implements BorrowingService {
  
+    private final BorrowingRepository repository;
+    private final BookClient bookClient;
+    private final MemberClient memberClient;
+    private final MailClient mailClient;
+ 
+    @Override
+    public BorrowingTransaction borrowBook(BorrowingTransactionDTO dto, String authenticatedMemberId) {
+ 
+        if (!authenticatedMemberId.equals(String.valueOf(dto.getMemberId()))) {
+            throw new BorrowingNotAllowedException("You are not authorized to borrow for this member");
+        }
+ 
+        int availableCopies = bookClient.getBookById(dto.getBookId()).getAvailableCopies();
+        if (availableCopies <= 0) {
+            throw new BorrowingNotAllowedException("Book is not available for borrowing");
+        }
+ 
+        BorrowingTransaction transaction = BorrowingTransaction.builder()
+                .bookId(dto.getBookId())
+                .memberId(dto.getMemberId())
+                .borrowDate(LocalDate.now())
+                .status(Status.BORROWED)
+                .build();
+ 
+        BorrowingTransaction saved = repository.save(transaction);
+log.info("Book borrowed successfully: {}", saved);
+ 
+        try {
+            bookClient.updateBookCopies(dto.getBookId(), availableCopies - 1);
+            mailClient.sendEmail(dto.getMemberId(), "Book Borrowed Successfully for Transaction ID: " + saved.getTransactionid());
+        } catch (Exception e) {
+            log.error("Error sending mail or updating copies: {}", e.getMessage());
+        }
+ 
+        return saved;
+    }
+ 
+    @Override
+    public BorrowingTransaction returnBook(Long transactionId, String authenticatedMemberId) {
+ 
+        BorrowingTransaction transaction = repository.findById(transactionId)
+                .orElseThrow(() -> new BorrowingTransactionNotFoundException("Transaction ID not found: " + transactionId));
+ 
+        if (!authenticatedMemberId.equals(String.valueOf(transaction.getMemberId()))) {
+            throw new BorrowingNotAllowedException("You are not authorized to return for this transaction");
+        }
+ 
+        transaction.setReturnDate(LocalDate.now());
+        transaction.setStatus(Status.RETURNED);
+        BorrowingTransaction updated = repository.save(transaction);
+log.info("Book returned successfully: {}", updated);
+ 
+        try {
+            int currentCopies = bookClient.getBookById(transaction.getBookId()).getAvailableCopies();
+            bookClient.updateBookCopies(transaction.getBookId(), currentCopies + 1);
+            mailClient.sendEmail(transaction.getMemberId(), "Book Returned Successfully for Transaction ID: " + transaction.getTransactionid());
+        } catch (Exception e) {
+            log.error("Error sending mail or updating copies: {}", e.getMessage());
+        }
+ 
+        return updated;
+    }
+ 
+    @Override
+    public BorrowingTransaction getBorrowingById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new BorrowingTransactionNotFoundException("Transaction ID not found: " + id));
+    }
+ 
+    @Override
+    public List<BorrowingTransaction> getAllBorrowings() {
+        return repository.findAll();
+    }
+ 
+    @Override
+    public List<BorrowingTransaction> getBorrowingsByMemberId(Long memberId, String authenticatedMemberId) {
+        if (!authenticatedMemberId.equals(String.valueOf(memberId))) {
+            throw new BorrowingNotAllowedException("You are not authorized to view this member's borrowings");
+        }
+ 
+        List<BorrowingTransaction> list = repository.findByMemberId(memberId);
+log.info("Found {} transactions for member {}", list.size(), memberId);
+        return list;
+    }
 }
