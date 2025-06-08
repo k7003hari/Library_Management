@@ -1,9 +1,308 @@
+package com.cts;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication
+@EnableFeignClients
+public class BorrowingServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(BorrowingServiceApplication.class, args);
+	}
+
+}
+
+package com.cts.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.model.BorrowingTransaction;
+import com.cts.service.BorrowingService;
+
+import lombok.AllArgsConstructor;
+
+@RestController
+@AllArgsConstructor
+@RequestMapping("/borrowings")
+public class BorrowingController {
+
+	private final BorrowingService borrowingService;
+
+	// Borrow a book
+	@PostMapping("/borrow")
+	public BorrowingTransaction borrowBook(@RequestBody BorrowingTransactionDTO transactionDTO) {
+	    return borrowingService.borrowBook(transactionDTO);
+	}
+
+    // Return a book
+	@PostMapping("/return")
+	public BorrowingTransaction returnBook(@RequestBody BorrowingTransactionDTO transactionDTO) {
+	    return borrowingService.returnBook(transactionDTO.getMemberId(), transactionDTO.getBookId());
+	}
+
+
+    // Get all currently borrowed books by a member
+    @GetMapping("/{memberId}")
+    public List<BorrowingTransaction> getBorrowedBooks(@PathVariable Long memberId) {
+        return borrowingService.getMemberBorrowedBooks(memberId);
+    }
+    
+    //get all borrowed books
+    @GetMapping("/getall")
+	public List<BorrowingTransaction> getAllBorrows() {
+		return borrowingService.getAllBorrows();
+	}
+}
+package com.cts.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BookDTO {
+    private Long bookId;
+    private String title;
+    private String author;
+    private String genre;
+    private String isbn;
+    private int yearPublished;
+    private int availableCopies;
+}
+
+package com.cts.dto;
+
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BorrowingTransactionDTO {
+    private Long transactionId;
+
+    @NotNull(message = "Book ID cannot be null")
+    private Long bookId;
+
+    @NotNull(message = "Member ID cannot be null")
+    private Long memberId;
+
+    private LocalDate borrowDate;
+    private LocalDate returnDate;
+
+    @NotNull(message = "Status is required")
+    private String status; // BORROWED or RETURNED
+}
+package com.cts.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MemberDTO {
+    private Long memberId;
+    private String name;
+    private String email;
+    private String phone;
+    private String address;
+    private String membershipStatus;
+}
+
+package com.cts.exception;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+	@ExceptionHandler(BorrowingTransactionNotFoundException.class)
+	@ResponseStatus(HttpStatus.NOT_FOUND)
+	public Map<String, String> handleNotFound(BorrowingTransactionNotFoundException ex) {
+		Map<String, String> error = new HashMap<>();
+		error.put("error", ex.getMessage());
+		return error;
+	}
+
+	@ExceptionHandler(BorrowingNotAllowedException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, String> handleNotAllowed(BorrowingNotAllowedException ex) {
+		Map<String, String> error = new HashMap<>();
+		error.put("error", ex.getMessage());
+		return error;
+	}
+
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, String> handleValidation(MethodArgumentNotValidException ex) {
+		Map<String, String> errors = new HashMap<>();
+		ex.getBindingResult().getFieldErrors().forEach(e -> errors.put(e.getField(), e.getDefaultMessage()));
+		return errors;
+	}
+}
+
+package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.cts.dto.BookDTO;
+
+import lombok.Data;
+import lombok.Getter;
+
+@FeignClient(name = "BOOKSERVICE", path="/books")
+public interface BookClient {
+    @GetMapping("/getById/{id}")
+    BookDTO getBook(@PathVariable Long id);
+ 
+    @PutMapping("/books/{id}/copies")
+    void updateBookCopies(@PathVariable Long id, @RequestParam int availableCopies);	
+}
+package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@FeignClient(name = "NOTIFICATIONSERVICE", path = "/email")
+public interface MailClient {
+	@PostMapping("/send")
+	public String sendEmail(@RequestParam String recipient, @RequestParam String subject,
+			@RequestParam String message) ;
+ 
+}
+package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.cts.dto.MemberDTO;
+
+@FeignClient(name = "MEMBERSERVICE", path="/members")
+public interface MemberClient {
+    @GetMapping("/{id}")
+    Object getMember(@PathVariable Long id);
+}
+package com.cts.model;
+
+import java.time.LocalDate;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BorrowingTransaction {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Ensures auto-increment works
+    private Long id;
+
+    private Long memberId;
+    private Long bookId;
+    
+    private LocalDate borrowDate;
+    
+    private LocalDate returnDate;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;
+
+    public enum Status {
+        BORROWED,
+        RETURNED
+    }
+}
+package com.cts.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.cts.model.BorrowingTransaction;
+
+public interface BorrowingRepository extends JpaRepository<BorrowingTransaction, Long> {
+
+	List<BorrowingTransaction> findByMemberIdAndStatus(Long memberId, BorrowingTransaction.Status status);
+
+	Optional<BorrowingTransaction> findByBookIdAndMemberIdAndStatus(Long bookId, Long memberId,
+			BorrowingTransaction.Status status);
+
+}
 package com.cts.service;
 
+import java.util.List;
+
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.model.BorrowingTransaction;
+
+public interface BorrowingService {
+
+	BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO);
+
+	BorrowingTransaction returnBook(Long memberId, Long bookId);	
+
+	List<BorrowingTransaction> getMemberBorrowedBooks(Long memberId);
+	
+	List<BorrowingTransaction> getAllBorrows();
+}
+package com.cts.service;
 
 import java.time.LocalDate;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.cts.dto.BorrowingTransactionDTO;
@@ -13,99 +312,182 @@ import com.cts.feign.BookClient;
 import com.cts.feign.MailClient;
 import com.cts.feign.MemberClient;
 import com.cts.model.BorrowingTransaction;
-import com.cts.model.BorrowingTransaction.Status;
 import com.cts.repository.BorrowingRepository;
 
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@AllArgsConstructor
 public class BorrowingServiceImpl implements BorrowingService {
+
+	private static final Logger logger = LoggerFactory.getLogger(BorrowingServiceImpl.class);
+
+	private final BorrowingRepository repository;
+	private final BookClient bookClient;
+	private final MemberClient memberClient;
+	private final MailClient mailClient;
+
+	@Override
+	public BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO) {
+	logger.info("Attempting to borrow book with ID: {} for member ID: {}", transactionDTO.getBookId(), transactionDTO.getMemberId());
+	 
+	    // Validate member and book
+	    memberClient.getMember(transactionDTO.getMemberId()); // Ensure member exists
+	    bookClient.getBook(transactionDTO.getBookId());       // Ensure book exists
+	 
+	    // Check for borrowing limit
+	    long activeBorrowings = repository.findByMemberIdAndStatus(transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED).size();
+	    if (activeBorrowings >= 5) {
+	        logger.warn("Borrowing limit exceeded for member ID: {}", transactionDTO.getMemberId());
+	        throw new BorrowingNotAllowedException("Borrowing limit exceeded");
+	    }
+	 
+	    // Check if the same book is already borrowed by the same member
+	    boolean alreadyBorrowedSameBook = repository
+	        .findByBookIdAndMemberIdAndStatus(transactionDTO.getBookId(), transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED)
+	        .isPresent();
+	 
+	    if (alreadyBorrowedSameBook) {
+	        logger.warn("Member ID: {} is already borrowing Book ID: {}", transactionDTO.getMemberId(), transactionDTO.getBookId());
+	        throw new BorrowingNotAllowedException("Book is already borrowed by this member");
+	    }
+	 
+	    // Create new borrowing transaction
+	    BorrowingTransaction tx = BorrowingTransaction.builder()
+	            .bookId(transactionDTO.getBookId())
+	            .memberId(transactionDTO.getMemberId())
+	            .borrowDate(LocalDate.now())
+	            .status(BorrowingTransaction.Status.BORROWED)
+	            .build();
+	 
+	    repository.save(tx);
+	    log.info("New Booking is added");
+		String msg="Successfully borrowed  :"+transactionDTO.getBookId()+" Book by Member "+transactionDTO.getMemberId()+" ";
+		mailClient.sendEmail("ms12032004tsi@gmail.com","Hotel Booking System",msg);
+	logger.info("Book borrowed successfully: Book ID={}, Member ID={}", transactionDTO.getBookId(), transactionDTO.getMemberId());
+	    return tx;
+	}
+	
+	@Override
+	public List<BorrowingTransaction> getAllBorrows() {
+	    log.debug("Fetching all Borrows");
+	    return repository.findAll();
+	}
+
+
+	@Override
+	public BorrowingTransaction returnBook(Long memberId, Long bookId) {
+		logger.info("Attempting to return book with ID: {} for member ID: {}", bookId, memberId);
+
+		BorrowingTransaction tx = repository
+				.findByBookIdAndMemberIdAndStatus(bookId, memberId, BorrowingTransaction.Status.BORROWED)
+				.orElseThrow(() -> {
+					logger.error("No active borrowing found for book ID: {} and member ID: {}", bookId, memberId);
+					return new BorrowingTransactionNotFoundException("No active borrowing found");
+				});
+
+		tx.setStatus(BorrowingTransaction.Status.RETURNED);
+		tx.setReturnDate(LocalDate.now());
+		repository.save(tx);
+
+		logger.info("Book returned successfully: Book ID={}, Member ID={}", bookId, memberId);
+		return tx;
+	}
+
+	@Override
+	public List<BorrowingTransaction> getMemberBorrowedBooks(Long memberId) {
+		logger.debug("Fetching borrowed books for member ID: {}", memberId);
+
+		List<BorrowingTransaction> borrowedBooks = repository.findByMemberIdAndStatus(memberId,
+				BorrowingTransaction.Status.BORROWED);
+
+		logger.info("Retrieved {} borrowed books for member ID: {}", borrowedBooks.size(), memberId);
+		return borrowedBooks;
+	}
+
+}
+above code is borrowing service 
+
+package com.cts.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.cts.service.NotificationService;
+
+@RestController
+@RequestMapping("/email")
+public class NotificationController {
+	@Autowired
+	private NotificationService notificationService;
  
-    private final BorrowingRepository repository;
-    private final BookClient bookClient;
-    private final MemberClient memberClient;
-    private final MailClient mailClient;
+	@PostMapping("/send")
+	public String sendEmail(@RequestParam String recipient, @RequestParam String subject,
+			@RequestParam String message) {
+		return notificationService.sendEmail(recipient, subject, message);
+	}
+}
+
+package com.cts.demo;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+
+@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+@ComponentScan(basePackages="com.cts")
+public class MailNotificationApplication {
  
-    @Override
-    public BorrowingTransaction borrowBook(BorrowingTransactionDTO dto, String authenticatedMemberId) {
+	public static void main(String[] args) {
+		SpringApplication.run(MailNotificationApplication.class, args);
+	}
  
-        if (!authenticatedMemberId.equals(String.valueOf(dto.getMemberId()))) {
-            throw new BorrowingNotAllowedException("You are not authorized to borrow for this member");
-        }
+}
+
+package com.cts.repository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class NotificationRepository {
+	@Autowired
+    private JavaMailSender mailSender;
  
-        int availableCopies = bookClient.getBookById(dto.getBookId()).getAvailableCopies();
-        if (availableCopies <= 0) {
-            throw new BorrowingNotAllowedException("Book is not available for borrowing");
-        }
+    public String sendEmail(String recipientEmail, String subject, String content) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("k7003hari@gmail.com"); // Configured in properties
+        message.setTo(recipientEmail);
+        message.setSubject(subject);
+        message.setText(content);
  
-        BorrowingTransaction transaction = BorrowingTransaction.builder()
-                .bookId(dto.getBookId())
-                .memberId(dto.getMemberId())
-                .borrowDate(LocalDate.now())
-                .status(Status.BORROWED)
-                .build();
+        mailSender.send(message);
+        return "Email sent successfully";
+    }	
+}
+package com.cts.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.cts.repository.NotificationRepository;
+
+@Service
+public class NotificationService {
+	@Autowired
+    private NotificationRepository notificationRepository;
  
-        BorrowingTransaction saved = repository.save(transaction);
-log.info("Book borrowed successfully: {}", saved);
- 
-        try {
-            bookClient.updateBookCopies(dto.getBookId(), availableCopies - 1);
-            mailClient.sendEmail(dto.getMemberId(), "Book Borrowed Successfully for Transaction ID: " + saved.getTransactionid());
-        } catch (Exception e) {
-            log.error("Error sending mail or updating copies: {}", e.getMessage());
-        }
- 
-        return saved;
-    }
- 
-    @Override
-    public BorrowingTransaction returnBook(Long transactionId, String authenticatedMemberId) {
- 
-        BorrowingTransaction transaction = repository.findById(transactionId)
-                .orElseThrow(() -> new BorrowingTransactionNotFoundException("Transaction ID not found: " + transactionId));
- 
-        if (!authenticatedMemberId.equals(String.valueOf(transaction.getMemberId()))) {
-            throw new BorrowingNotAllowedException("You are not authorized to return for this transaction");
-        }
- 
-        transaction.setReturnDate(LocalDate.now());
-        transaction.setStatus(Status.RETURNED);
-        BorrowingTransaction updated = repository.save(transaction);
-log.info("Book returned successfully: {}", updated);
- 
-        try {
-            int currentCopies = bookClient.getBookById(transaction.getBookId()).getAvailableCopies();
-            bookClient.updateBookCopies(transaction.getBookId(), currentCopies + 1);
-            mailClient.sendEmail(transaction.getMemberId(), "Book Returned Successfully for Transaction ID: " + transaction.getTransactionid());
-        } catch (Exception e) {
-            log.error("Error sending mail or updating copies: {}", e.getMessage());
-        }
- 
-        return updated;
-    }
- 
-    @Override
-    public BorrowingTransaction getBorrowingById(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new BorrowingTransactionNotFoundException("Transaction ID not found: " + id));
-    }
- 
-    @Override
-    public List<BorrowingTransaction> getAllBorrowings() {
-        return repository.findAll();
-    }
- 
-    @Override
-    public List<BorrowingTransaction> getBorrowingsByMemberId(Long memberId, String authenticatedMemberId) {
-        if (!authenticatedMemberId.equals(String.valueOf(memberId))) {
-            throw new BorrowingNotAllowedException("You are not authorized to view this member's borrowings");
-        }
- 
-        List<BorrowingTransaction> list = repository.findByMemberId(memberId);
-log.info("Found {} transactions for member {}", list.size(), memberId);
-        return list;
+    public String sendEmail(String recipientEmail, String subject, String content) {
+    	return notificationRepository.sendEmail(recipientEmail, subject, content);
     }
 }
+
+this mail related code
+help me to fix the problem 
