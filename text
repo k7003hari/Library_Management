@@ -1,20 +1,116 @@
-package com.cts.dto;
+package com.cts.service;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
-@Data
-@AllArgsConstructor
-public class ErrorResponse {
-   private String code;
-   private String message;
-   private String path;
-   private LocalDateTime timestamp = LocalDateTime.now();
+import org.springframework.stereotype.Service;
 
-   public ErrorResponse(String code, String message, String path) {
-       this.code = code;
-       this.message = message;
-       this.path = path;
-   }
+import com.ctc.exception.FineNotFoundException;
+import com.ctc.exception.NoFineDueException;
+import com.ctc.exception.UnauthorizedAccessException;
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.dto.FineDTO;
+import com.cts.feign.BorrowingClient;
+import com.cts.feign.MemberClient;
+import com.cts.model.Fine;
+import com.cts.repository.FineRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FineServiceImpl implements FineService {
+
+	private final FineRepository fineRepository;
+	private final BorrowingClient borrowingClient;
+	private final MemberClient memberClient;
+
+	private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(1.00);
+
+	@Override
+	public FineDTO calculateFine(Long memberId) {
+		log.info("Calculating fine for member ID: {}", memberId);
+
+		List<Fine> pendingFines = fineRepository.findByMemberIdAndStatus(memberId, Fine.FineStatus.PENDING);
+		if (!pendingFines.isEmpty()) {
+			throw new RuntimeException("⚠️ You already have a pending fine. Please pay it before calculating again.");
+		}
+
+		List<BorrowingTransactionDTO> borrowedBooks = borrowingClient.getBorrowedBooksByMember(memberId);
+		BigDecimal totalFine = BigDecimal.ZERO;
+
+		for (BorrowingTransactionDTO tx : borrowedBooks) {
+			if (tx.getStatus() == BorrowingTransactionDTO.Status.RETURNED) {
+				LocalDate dueDate = tx.getBorrowDate().plusDays(14);
+				long overdueDays = calculateOverdueDays(dueDate, tx.getReturnDate());
+
+				if (overdueDays > 0) {
+					totalFine = totalFine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+				}
+			}
+		}
+
+		if (totalFine.compareTo(BigDecimal.ZERO) <= 0) {
+			log.info("No overdue books for member ID: {}", memberId);
+			throw new NoFineDueException("✅ You have no fines to pay. All books were returned on time!");
+		}
+
+		Fine fine = Fine.builder().memberId(memberId).amount(totalFine).status(Fine.FineStatus.PENDING)
+				.transactionDate(LocalDate.now()).build();
+
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public FineDTO payFine(Long memberId, Long fineId) {
+		log.info("Processing payment for fine ID: {} by member ID: {}", fineId, memberId);
+
+		Fine fine = fineRepository.findById(fineId)
+				.orElseThrow(() -> new FineNotFoundException("Fine not found with ID: " + fineId));
+
+		if (!fine.getMemberId().equals(memberId)) {
+			throw new UnauthorizedAccessException("🚫 You are not authorized to pay this fine.");
+		}
+
+		if (fine.getStatus() == Fine.FineStatus.PAID) {
+			throw new RuntimeException("ℹ️ This fine is already paid.");
+		}
+
+		fine.setStatus(Fine.FineStatus.PAID);
+		fineRepository.save(fine);
+
+		log.info("✅ Fine ID {} paid successfully by member {}", fineId, memberId);
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public List<FineDTO> getAllFines() {
+		log.info("Fetching all fines (admin view)");
+		return fineRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	@Override
+	public List<FineDTO> getFinesByMemberId(Long memberId) {
+		log.info("Fetching fines for member ID: {}", memberId);
+		return fineRepository.findByMemberId(memberId).stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	private long calculateOverdueDays(LocalDate dueDate, LocalDate returnDate) {
+		if (returnDate != null && returnDate.isAfter(dueDate)) {
+			return java.time.temporal.ChronoUnit.DAYS.between(dueDate, returnDate);
+		}
+		return 0;
+	}
+
+	private FineDTO mapToDTO(Fine fine) {
+		return FineDTO.builder().fineId(fine.getFineId()).memberId(memberClient.getMemberById(fine.getMemberId()))
+				.amount(fine.getAmount()).status(fine.getStatus().name()).transactionDate(fine.getTransactionDate())
+				.build();
+	}
 }
