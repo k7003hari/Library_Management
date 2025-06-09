@@ -1,35 +1,27 @@
-package com.ctc.exception;
+next: (res) => {
+  if (res?.errorCode === 'NO_FINE_DUE') {
+    this.message = res.message || '🎉 You have no pending fine.';
+    this.fineDetails = null;
+    return;
+  }
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
+  this.fineDetails = res;
+  if (!this.fineDetails || this.fineDetails.amount === 0) {
+    this.message = '🎉 You have no pending fine.';
+    return;
+  }
 
-import com.cts.dto.ErrorResponse;
+  if (this.fineDetails.status === 'PAID') {
+    this.message = '✅ Fine already paid.';
+    return;
+  }
 
-import jakarta.servlet.http.HttpServletRequest;
-
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-
-	@ExceptionHandler(FineNotFoundException.class)
-	public ErrorResponse handleFineNotFoundException(FineNotFoundException ex, HttpServletRequest request) {
-		return new ErrorResponse("FINE_NOT_FOUND", ex.getMessage(), request.getRequestURI());
-	}
-
-	@ExceptionHandler(UnauthorizedAccessException.class)
-	public ErrorResponse handleUnauthorizedAccessException(UnauthorizedAccessException ex, HttpServletRequest request) {
-		return new ErrorResponse("UNAUTHORIZED_ACCESS", ex.getMessage(), request.getRequestURI());
-	}
-
-	@ExceptionHandler(Exception.class)
-	public ErrorResponse handleGenericException(Exception ex, HttpServletRequest request) {
-		return new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred.", request.getRequestURI());
-	}
-	
-	@ExceptionHandler(NoFineDueException.class)
-	public ResponseEntity<ErrorResponse> handleNoFineException(NoFineDueException ex, HttpServletRequest request) {
-	    ErrorResponse error = new ErrorResponse("NO_FINE_DUE", ex.getMessage(), request.getRequestURI());
-	    return ResponseEntity.status(HttpStatus.OK).body(error);  // ⬅️ return as 200 OK with message
-	}
+  this.message = '✅ Fine calculated successfully. Opening payment...';
+  setTimeout(() => {
+    this.openRazorpayUI();
+  }, 1000);
+},
+error: (err) => {
+  this.error = '❌ Error calculating fine.';
+  console.error(err);
 }
