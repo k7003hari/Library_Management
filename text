@@ -1,79 +1,5 @@
-package com.cts.controller;
 
-import java.util.List;
-
-import org.springframework.web.bind.annotation.*;
-
-import com.cts.dto.FineDTO;
-import com.cts.service.FineService;
-
-import lombok.RequiredArgsConstructor;
-
-@RestController
-@RequestMapping("/fines")
-@RequiredArgsConstructor
-public class FineController {
-
-	private final FineService fineService;
-
-	// ✅ 1. Calculate fine for a member (creates a new fine if overdue exists)
-	@PostMapping("/calculatefine/{memberId}")
-	public FineDTO calculateFine(@PathVariable Long memberId) {
-		return fineService.calculateFine(memberId);
-	}
-
-	// ✅ 2. Pay a specific fine for the logged-in member
-	@PostMapping("/pay/{memberId}/{fineId}")
-	public FineDTO payFine(@PathVariable Long memberId, @PathVariable Long fineId) {
-		return fineService.payFine(memberId, fineId);
-	}
-
-	// ✅ 3. Admin - get all fines
-	@GetMapping("/allfines")
-	public List<FineDTO> getAllFines() {
-		return fineService.getAllFines();
-	}
-
-	// ✅ 4. Member - get own fines
-	@GetMapping("/member/{memberId}")
-	public List<FineDTO> getFinesForMember(@PathVariable Long memberId) {
-		return fineService.getFinesByMemberId(memberId);
-	}
-}
-package com.ctc.exception;
-
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import com.cts.dto.ErrorResponse;
-
-import jakarta.servlet.http.HttpServletRequest;
-
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-
-	@ExceptionHandler(FineNotFoundException.class)
-	public ErrorResponse handleFineNotFoundException(FineNotFoundException ex, HttpServletRequest request) {
-		return new ErrorResponse("FINE_NOT_FOUND", ex.getMessage(), request.getRequestURI());
-	}
-
-	@ExceptionHandler(UnauthorizedAccessException.class)
-	public ErrorResponse handleUnauthorizedAccessException(UnauthorizedAccessException ex, HttpServletRequest request) {
-		return new ErrorResponse("UNAUTHORIZED_ACCESS", ex.getMessage(), request.getRequestURI());
-	}
-
-	@ExceptionHandler(Exception.class)
-	public ErrorResponse handleGenericException(Exception ex, HttpServletRequest request) {
-		return new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred.", request.getRequestURI());
-	}
-	
-	 @ExceptionHandler(NoFineDueException.class)
-	    public String handleNoFineException(NoFineDueException ex) {
-	        return ex.getMessage(); // returns "No fine applicable."
-	}
-}
 package com.cts.service;
-
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -99,115 +25,265 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class FineServiceImpl implements FineService {
- 
-    private final FineRepository fineRepository;
-    private final BorrowingClient borrowingClient;
-    private final MemberClient memberClient;
- 
-    private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(1.00);
- 
-    @Override
-    public FineDTO calculateFine(Long memberId) {
-log.info("Calculating fine for member ID: {}", memberId);
- 
-        // Check if there's already an unpaid fine
-        List<Fine> pendingFines = fineRepository.findByMemberIdAndStatus(memberId, Fine.FineStatus.PENDING);
-        if (!pendingFines.isEmpty()) {
-            throw new RuntimeException("You already have a pending fine. Please pay it before calculating again.");
-        }
- 
-        List<BorrowingTransactionDTO> borrowedBooks = borrowingClient.getBorrowedBooksByMember(memberId);
-        BigDecimal totalFine = BigDecimal.ZERO;
- 
-        for (BorrowingTransactionDTO tx : borrowedBooks) {
-            if (tx.getStatus() == BorrowingTransactionDTO.Status.RETURNED) {
-                long overdueDays = calculateOverdueDays(tx.getReturnDate());
-                if (overdueDays > 0) {
-                    totalFine = totalFine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
-                }
-            }
-        }
- 
-        if (totalFine.compareTo(BigDecimal.ZERO) <= 0) {
-log.info("No overdue books for member ID: {}", memberId);
-            throw new NoFineDueException("No fine due at this time.");
-        }
- 
-        Fine fine = Fine.builder()
-                .memberId(memberId)
-                .amount(totalFine)
-                .status(Fine.FineStatus.PENDING)
-                .transactionDate(LocalDate.now())
-                .build();
- 
-        fineRepository.save(fine);
- 
-        return mapToDTO(fine);
-    }
- 
-    @Override
-    public FineDTO payFine(Long memberId, Long fineId) {
-log.info("Processing payment for fine ID: {} by member ID: {}", fineId, memberId);
- 
-        Fine fine = fineRepository.findById(fineId)
-                .orElseThrow(() -> new FineNotFoundException("Fine not found with ID: " + fineId));
- 
-        if (!fine.getMemberId().equals(memberId)) {
-            throw new UnauthorizedAccessException("You are not authorized to pay this fine.");
-        }
- 
-        if (fine.getStatus() == Fine.FineStatus.PAID) {
-            throw new RuntimeException("This fine is already paid.");
-        }
- 
-        fine.setStatus(Fine.FineStatus.PAID);
-        fineRepository.save(fine);
- 
-        return mapToDTO(fine);
-    }
- 
-    @Override
-    public List<FineDTO> getAllFines() {
-log.info("Fetching all fines (admin view)");
-        return fineRepository.findAll()
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }
- 
-    @Override
-    public List<FineDTO> getFinesByMemberId(Long memberId) {
-log.info("Fetching fines for member ID: {}", memberId);
-        return fineRepository.findByMemberId(memberId)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }
- 
-    private long calculateOverdueDays(LocalDate returnDate) {
-        if (returnDate == null || returnDate.isBefore(LocalDate.now())) {
-            return returnDate == null ? 0 : returnDate.until(LocalDate.now()).getDays();
-        }
-        return 0;
-    }
- 
-    private FineDTO mapToDTO(Fine fine) {
-        return FineDTO.builder()
-                .fineId(fine.getFineId())
-                .memberId(memberClient.getMemberById(fine.getMemberId()))
-                .amount(fine.getAmount())
-                .status(fine.getStatus().name())
-                .transactionDate(fine.getTransactionDate())
-                .build();
-    }
-}
-{
-    "timestamp": "2025-06-09T03:43:40.803+00:00",
-    "status": 500,
-    "error": "Internal Server Error",
-    "trace": "com.ctc.exception.NoFineDueException: No fine due at this time.\r\n\tat com.cts.service.FineServiceImpl.calculateFine(FineServiceImpl.java:59)\r\n\tat com.cts.controller.FineController.calculateFine(FineController.java:22)\r\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\r\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\r\n\tat org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:258)\r\n\tat org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:191)\r\n\tat org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)\r\n\tat org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:986)\r\n\tat org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:891)\r\n\tat org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)\r\n\tat org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089)\r\n\tat org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979)\r\n\tat org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)\r\n\tat org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914)\r\n\tat jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590)\r\n\tat org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)\r\n\tat jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:195)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)\r\n\tat org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)\r\n\tat org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)\r\n\tat org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)\r\n\tat org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)\r\n\tat org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)\r\n\tat org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)\r\n\tat org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)\r\n\tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)\r\n\tat org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)\r\n\tat org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)\r\n\tat org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)\r\n\tat org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:116)\r\n\tat org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)\r\n\tat org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)\r\n\tat org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)\r\n\tat org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:398)\r\n\tat org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)\r\n\tat org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:903)\r\n\tat org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1740)\r\n\tat org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)\r\n\tat org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1189)\r\n\tat org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:658)\r\n\tat org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)\r\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\r\n",
-    "message": "No fine due at this time.",
-    "path": "/fines/calculatefine/1"
+
+	private final FineRepository fineRepository;
+	private final BorrowingClient borrowingClient;
+	private final MemberClient memberClient;
+
+	private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(1.00);
+
+	@Override
+	public FineDTO calculateFine(Long memberId) {
+		log.info("Calculating fine for member ID: {}", memberId);
+
+		// Check if there's already an unpaid fine
+		List<Fine> pendingFines = fineRepository.findByMemberIdAndStatus(memberId, Fine.FineStatus.PENDING);
+		if (!pendingFines.isEmpty()) {
+			throw new RuntimeException("You already have a pending fine. Please pay it before calculating again.");
+		}
+
+		List<BorrowingTransactionDTO> borrowedBooks = borrowingClient.getBorrowedBooksByMember(memberId);
+		BigDecimal totalFine = BigDecimal.ZERO;
+
+		for (BorrowingTransactionDTO tx : borrowedBooks) {
+			if (tx.getStatus() == BorrowingTransactionDTO.Status.RETURNED) {
+				long overdueDays = calculateOverdueDays(tx.getReturnDate());
+				if (overdueDays > 0) {
+					totalFine = totalFine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+				}
+			}
+		}
+
+		if (totalFine.compareTo(BigDecimal.ZERO) <= 0) {
+			log.info("No overdue books for member ID: {}", memberId);
+			throw new NoFineDueException("🎉 Great news! You have no pending fines at this time.");
+		}
+
+		Fine fine = Fine.builder().memberId(memberId).amount(totalFine).status(Fine.FineStatus.PENDING)
+				.transactionDate(LocalDate.now()).build();
+
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public FineDTO payFine(Long memberId, Long fineId) {
+		log.info("Processing payment for fine ID: {} by member ID: {}", fineId, memberId);
+
+		Fine fine = fineRepository.findById(fineId)
+				.orElseThrow(() -> new FineNotFoundException("Fine not found with ID: " + fineId));
+
+		if (!fine.getMemberId().equals(memberId)) {
+			throw new UnauthorizedAccessException("You are not authorized to pay this fine.");
+		}
+
+		if (fine.getStatus() == Fine.FineStatus.PAID) {
+			throw new RuntimeException("This fine is already paid.");
+		}
+
+		fine.setStatus(Fine.FineStatus.PAID);
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public List<FineDTO> getAllFines() {
+		log.info("Fetching all fines (admin view)");
+		return fineRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	@Override
+	public List<FineDTO> getFinesByMemberId(Long memberId) {
+		log.info("Fetching fines for member ID: {}", memberId);
+		return fineRepository.findByMemberId(memberId).stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	private long calculateOverdueDays(LocalDate returnDate) {
+		if (returnDate == null || returnDate.isBefore(LocalDate.now())) {
+			return returnDate == null ? 0 : returnDate.until(LocalDate.now()).getDays();
+		}
+		return 0;
+	}
+
+	private FineDTO mapToDTO(Fine fine) {
+		return FineDTO.builder().fineId(fine.getFineId()).memberId(memberClient.getMemberById(fine.getMemberId()))
+				.amount(fine.getAmount()).status(fine.getStatus().name()).transactionDate(fine.getTransactionDate())
+				.build();
+	}
 }
 
-i need decent message if there is no pending fines 
+
+package com.cts.service;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.dto.MemberDTO;
+import com.cts.dto.BookDTO;
+import com.cts.exception.BorrowingNotAllowedException;
+import com.cts.exception.BorrowingTransactionNotFoundException;
+import com.cts.feign.BookClient;
+import com.cts.feign.MailClient;
+import com.cts.feign.MemberClient;
+import com.cts.model.BorrowingTransaction;
+import com.cts.repository.BorrowingRepository;
+
+import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@Slf4j
+@AllArgsConstructor
+public class BorrowingServiceImpl implements BorrowingService {
+
+	private final BorrowingRepository repository;
+	private final BookClient bookClient;
+	private final MemberClient memberClient;
+	private final MailClient mailClient;
+
+	@Override
+	public BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO) {
+		log.info("Attempting to borrow book with ID: {} for member ID: {}", transactionDTO.getBookId(),
+				transactionDTO.getMemberId());
+
+		// Validate member
+		MemberDTO member = memberClient.getMember(transactionDTO.getMemberId());
+		if (member == null) {
+			throw new BorrowingNotAllowedException("Member not found");
+		}
+
+		// Validate book
+		BookDTO book = bookClient.getBookById(transactionDTO.getBookId());
+		if (book == null || book.getAvailableCopies() <= 0) {
+			throw new BorrowingNotAllowedException("Book unavailable");
+		}
+
+		// Rules
+		long activeCount = repository
+				.findByMemberIdAndStatus(transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED).size();
+
+		if (activeCount >= 5) {
+			throw new BorrowingNotAllowedException("Borrowing limit exceeded (Max 5 books)");
+		}
+
+		boolean alreadyBorrowed = repository.findByBookIdAndMemberIdAndStatus(transactionDTO.getBookId(),
+				transactionDTO.getMemberId(), BorrowingTransaction.Status.BORROWED).isPresent();
+
+		if (alreadyBorrowed) {
+			throw new BorrowingNotAllowedException("Book already borrowed by this member");
+		}
+
+		// Create and Save transaction
+		BorrowingTransaction tx = BorrowingTransaction.builder().bookId(transactionDTO.getBookId())
+				.memberId(transactionDTO.getMemberId()).borrowDate(LocalDate.now())
+				.dueDate(LocalDate.now().plusDays(14)).status(BorrowingTransaction.Status.BORROWED).fineAmount(0)
+				.bookTitle(book.getTitle()).build();
+
+		log.info("Transaction ready to save: {}", tx);
+		BorrowingTransaction savedTx = repository.save(tx);
+
+		bookClient.updateBookCopies(transactionDTO.getBookId(), book.getAvailableCopies() - 1);
+
+		// Try sending email (don't fail the method if email fails)
+		try {
+			String msg = "Book borrowed: " + book.getTitle() + ". Return by: " + savedTx.getDueDate();
+			mailClient.sendEmail(member.getEmail(), "Library Borrowing Info", msg);
+			log.info("Email sent to {}", member.getEmail());
+		} catch (Exception e) {
+			log.error("Email failed: {}", e.getMessage());
+		}
+
+		return savedTx;
+	}
+
+	@Override
+	public BorrowingTransaction returnBook(Long memberId, Long bookId) {
+		log.info("Returning book with ID: {} for member ID: {}", bookId, memberId);
+
+		// Get active borrowing
+		BorrowingTransaction tx = repository
+				.findByBookIdAndMemberIdAndStatus(bookId, memberId, BorrowingTransaction.Status.BORROWED)
+				.orElseThrow(() -> new BorrowingTransactionNotFoundException("No active borrowing found"));
+
+		LocalDate today = LocalDate.now();
+		LocalDate due = tx.getDueDate();
+		double fine = today.isAfter(due) ? 7.0 * java.time.temporal.ChronoUnit.DAYS.between(due, today) : 0;
+
+		// Update transaction
+		tx.setReturnDate(today);
+		tx.setFineAmount(fine);
+		tx.setStatus(BorrowingTransaction.Status.RETURNED);
+
+		// Fetch book details
+		BookDTO book = bookClient.getBookById(bookId);
+		if (book == null) {
+			throw new RuntimeException("Book not found during return");
+		}
+
+		tx.setBookTitle(book.getTitle());
+		BorrowingTransaction savedTx = repository.save(tx);
+
+		// Update book copies
+		bookClient.updateBookCopies(bookId, book.getAvailableCopies() + 1);
+
+		// Get member info
+		MemberDTO member = memberClient.getMember(memberId);
+
+		// Send email (safely)
+		try {
+			String msg = "Book returned: " + book.getTitle() + ". Fine applied: ₹" + fine;
+			mailClient.sendEmail(member.getEmail(), "Library Return Info", msg);
+			log.info("Return email sent to {}", member.getEmail());
+		} catch (Exception e) {
+			log.error("Failed to send return email: {}", e.getMessage());
+		}
+
+		log.info("Return complete. Fine: ₹{}", fine);
+		return tx; // return the updated tx (with bookTitle)
+	}
+
+	@Override
+	public List<BorrowingTransaction> getMemberBorrowedBooks(Long memberId) {
+		List<BorrowingTransaction> transactions = repository.findByMemberIdAndStatus(memberId,
+				BorrowingTransaction.Status.BORROWED);
+
+		// Populate book titles manually
+		transactions.forEach(tx -> {
+			try {
+				BookDTO book = bookClient.getBookById(tx.getBookId());
+				tx.setBookTitle(book.getTitle()); // Set the transient field manually
+			} catch (Exception e) {
+				log.warn("Failed to fetch book title for Book ID: {}", tx.getBookId());
+				tx.setBookTitle("Unavailable");
+			}
+		});
+
+		return transactions;
+	}
+
+	@Override
+	public List<BorrowingTransaction> getAllBorrows() {
+		List<BorrowingTransaction> transactions = repository.findAll();
+
+		// Populate book titles manually
+		transactions.forEach(tx -> {
+			try {
+				BookDTO book = bookClient.getBookById(tx.getBookId());
+				tx.setBookTitle(book.getTitle());
+			} catch (Exception e) {
+				log.warn("Failed to fetch book title for Book ID: {}", tx.getBookId());
+				tx.setBookTitle("Unavailable");
+			}
+		});
+
+		return transactions;
+	}
+}
+
+
