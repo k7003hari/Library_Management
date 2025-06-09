@@ -1,67 +1,29 @@
-<!-- Fine Info for Member -->
-<div *ngIf="userRole === 'member'" class="border border-info p-2 rounded mt-3">
-  <h6 class="text-info text-center mb-2">💰 Fine Info</h6>
+private boolean isAuthorized(String role, String path, String method) {
+	    switch (role.toUpperCase()) {
+	        case "ADMIN":
+	            return path.startsWith("/books")
+	                || path.startsWith("/members")
+	                || path.startsWith("/borrowings")
+	                || path.startsWith("/fines")
+	                || path.startsWith("/notifications");
 
-  <ng-container *ngIf="fineDetails">
-    <p><strong>Fine ID:</strong> {{ fineDetails.fineId || 'N/A' }}</p>
-    <p><strong>Status:</strong>
-      <span class="badge"
-        [ngClass]="{
-          'bg-success': fineDetails.status === 'PAID',
-          'bg-danger': fineDetails.status === 'PENDING',
-          'bg-secondary': fineDetails.status === 'NO_FINE'
-        }">
-        {{ fineDetails.status }}
-      </span>
-    </p>
-    <p><strong>Message:</strong> {{ fineDetails.message }}</p>
-    <p><strong>Transaction Date:</strong> {{ fineDetails.transactionDate || 'N/A' }}</p>
-  </ng-container>
+	        case "MEMBER":
+	            // Allow GET requests to these paths
+	            if (method.equalsIgnoreCase("GET")) {
+	                return path.startsWith("/members")
+	                    || path.startsWith("/books")
+	                    || path.startsWith("/borrowings")
+	                    || path.startsWith("/fines")
+	                    || path.startsWith("/notifications");
+	            }
+	            // Allow POST/PUT only for borrow and return operations
+	            else if (method.equalsIgnoreCase("POST") || method.equalsIgnoreCase("PUT")) {
+	                return path.startsWith("/borrowings/return")
+	                    || path.startsWith("/borrowings/borrow");
+	            }
+	            return false;
 
-  <!-- Message -->
-  <div *ngIf="message" class="alert alert-success text-center p-2">{{ message }}</div>
-  <div *ngIf="error" class="alert alert-danger text-center p-2">{{ error }}</div>
-</div>
-
-
-
-
-
-calculateFine(): void {
-  this.message = '';
-  this.error = '';
-  const id = Number(localStorage.getItem('memberId'));
-
-  if (!id) {
-    this.error = '⚠️ Member ID not found.';
-    return;
-  }
-
-  this.memberService.calculateFine(id).subscribe({
-    next: (res) => {
-      this.fineDetails = res;
-
-      if (!res || res.status === 'NO_FINE' || res.amount === 0) {
-        this.message = res.message || '🎉 You have no pending fine.';
-        return;
-      }
-
-      if (res.status === 'PAID') {
-        this.message = '✅ Fine already paid.';
-        return;
-      }
-
-      this.message = '✅ Fine calculated successfully. Opening payment...';
-      setTimeout(() => {
-        this.openRazorpayUI();
-      }, 1000);
-    },
-    error: (err) => {
-      console.error(err);
-      this.error = '❌ Error calculating fine.';
-    },
-    complete: () => {
-      console.log('Fine calculation completed');
-    }
-  });
-}
+	        default:
+	            return false;
+	    }
+	}
