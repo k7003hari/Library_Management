@@ -1,211 +1,116 @@
-import { Component, OnInit } from '@angular/core';
-import { MemberService } from '../member.service';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { jwtDecode } from 'jwt-decode';
-import { ToastrService } from 'ngx-toastr';
+package com.cts.service;
 
-@Component({
-  selector: 'app-member-up-del',
-  standalone: true,
-  imports: [RouterLink, FormsModule, CommonModule, NavbarComponent],
-  templateUrl: './member-up-del.component.html',
-  styleUrls: ['./member-up-del.component.css']
-})
-export class MemberUpDelComponent implements OnInit {
-  members: any[] = [];
-  member: any = null;
-  memberId: number | null = null;
-  memberEmail: string = '';
-  userRole: string = '';
-  loggedInEmail: string = '';
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
-  constructor(
-    private memberService: MemberService,
-    private router: Router,
-    private toastr: ToastrService
-  ) { }
+import org.springframework.stereotype.Service;
 
-  ngOnInit(): void {
-    this.extractRoleAndThenLoadMembers();
-  }
+import com.ctc.exception.FineNotFoundException;
+import com.ctc.exception.NoFineDueException;
+import com.ctc.exception.UnauthorizedAccessException;
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.dto.FineDTO;
+import com.cts.feign.BorrowingClient;
+import com.cts.feign.MemberClient;
+import com.cts.model.Fine;
+import com.cts.repository.FineRepository;
 
-  extractRoleAndThenLoadMembers(): void {
-    const token = localStorage.getItem('JWT');
-    if (token) {
-      try {
-        const decoded: any = jwtDecode(token);
-        this.userRole = decoded.role || decoded.roles || '';
-        this.loggedInEmail = decoded.email;
-        localStorage.setItem('memberId', decoded.userId);
-        localStorage.setItem('email', decoded.email);
-        this.loadMembers();
-      } catch (err) {
-        console.error('Failed to decode JWT', err);
-        this.toastr.error('Invalid JWT token');
-      }
-    }
-  }
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-  loadMembers(): void {
-    if (this.userRole === 'admin') {
-      this.memberService.getAllMembers().subscribe({
-        next: (data) => this.members = data,
-        error: (err) => {
-          console.error('Error loading members', err);
-          this.toastr.error('Failed to load members');
-        }
-      });
-    } else if (this.userRole === 'member') {
-      const email = localStorage.getItem('email');
-      if (email) {
-        this.memberService.getMemberByEmail(email).subscribe({
-          next: (data) => this.members = [data],
-          error: () => {
-            this.toastr.error('Could not fetch your profile');
-          }
-        });
-      }
-    }
-  }
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FineServiceImpl implements FineService {
 
-  updateMember(memberId: number): void {
-    this.router.navigate(['/updateMember', memberId]);
-  }
+	private final FineRepository fineRepository;
+	private final BorrowingClient borrowingClient;
+	private final MemberClient memberClient;
 
-  deleteMember(memberId: number): void {
-    if (confirm('Are you sure you want to delete this member?')) {
-      this.memberService.deleteMember(memberId).subscribe({
-        next: () => {
-          this.members = this.members.filter(m => m.memberId !== memberId);
-          this.toastr.success('Member deleted successfully');
-        },
-        error: () => {
-          this.toastr.error('Failed to delete member');
-        }
-      });
-    }
-  }
+	private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(1.00);
 
-  searchMember(): void {
-    if (this.memberId) {
-      this.memberService.getMemberById(this.memberId).subscribe({
-        next: (data) => this.member = data,
-        error: () => {
-          this.toastr.warning('Member not found by ID');
-          this.member = null;
-        }
-      });
-    } else if (this.memberEmail) {
-      this.memberService.getMemberByEmail(this.memberEmail).subscribe({
-        next: (data) => this.member = data,
-        error: () => {
-          this.toastr.warning('Member not found by email');
-          this.member = null;
-        }
-      });
-    } else {
-      this.toastr.info('Please enter a Member ID or Email to search');
-    }
-  }
+	@Override
+	public FineDTO calculateFine(Long memberId) {
+		log.info("Calculating fine for member ID: {}", memberId);
 
-  fineDetails: any = null;
-  message: string = '';
-  error: string = '';
+		// Check if there's already an unpaid fine
+		List<Fine> pendingFines = fineRepository.findByMemberIdAndStatus(memberId, Fine.FineStatus.PENDING);
+		if (!pendingFines.isEmpty()) {
+			throw new RuntimeException("You already have a pending fine. Please pay it before calculating again.");
+		}
 
-  calculateFine(): void {
-    this.message = '';
-    this.error = '';
-    const id = Number(localStorage.getItem('memberId'));
-    if (!id) {
-      this.error = 'Member ID not found';
-      return;
-    }
-   
-    this.memberService.calculateFine(id).subscribe({
-      next: (res) => {
-        this.fineDetails = res;
-        this.message = '✅ Fine calculated successfully. Opening payment...';
-   
-        // Disable further calculation if already paid
-        if (this.fineDetails.status === 'PAID') {
-          this.message = '✅ Fine already paid.';
-          return;
-        }
-   
-        // 🔔 Open Razorpay UI after fine calculation
-        setTimeout(() => {
-          this.openRazorpayUI();
-        }, 1000);
-      },
-      error: (err) => {
-        this.error = '❌ Error calculating fine.';
-        console.error(err);
-      }
-    });
-  }
+		List<BorrowingTransactionDTO> borrowedBooks = borrowingClient.getBorrowedBooksByMember(memberId);
+		BigDecimal totalFine = BigDecimal.ZERO;
 
-  payFine(): void {
-    this.message = '';
-    this.error = '';
-    const id = Number(localStorage.getItem('memberId'));
-    const fineId = this.fineDetails?.fineId;
-   
-    if (!fineId) {
-      this.error = '⚠️ Please calculate fine first.';
-      return;
-    }
-   
-    this.memberService.payFine(id, fineId).subscribe({
-      next: () => {
-        this.message = '💸 Fine paid successfully.';
-        this.fineDetails.status = 'PAID';
-   
-        // ✅ Optional UI refresh
-        setTimeout(() => {
-          this.loadMembers();
-        }, 1000);
-      },
-      error: (err) => {
-        this.error = '❌ Payment failed.';
-        console.error(err);
-      }
-    });
-  }
+		for (BorrowingTransactionDTO tx : borrowedBooks) {
+			if (tx.getStatus() == BorrowingTransactionDTO.Status.RETURNED) {
+				long overdueDays = calculateOverdueDays(tx.getReturnDate(),tx.getReturnDate());
+				if (overdueDays > 0) {
+					totalFine = totalFine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+				}
+			}
+		}
 
-  goToAddMember(): void {
-    this.router.navigate(['/addMember']);
-  }
+		if (totalFine.compareTo(BigDecimal.ZERO) <= 0) {
+			log.info("No overdue books for member ID: {}", memberId);
+			throw new NoFineDueException("🎉 Great news! You have no pending fines at this time.");
+		}
 
-  openRazorpayUI(): void {
-    const self = this; // capture Angular context
-   
-    const options = {
-      key: 'rzp_test_mMYCMsqoLV36CI',
-      amount: this.fineDetails.amount * 100, // convert ₹ to paise
-      currency: 'INR',
-      name: 'Library Management System',
-      description: 'Fine Payment',
-      handler: function (response: any) {
-        alert('✅ Payment successful!\nPayment ID: ' + response.razorpay_payment_id);
-        
-        // ✅ Now correctly call Angular method
-        self.payFine(); 
-      },
-      prefill: {
-        name: self.members[0]?.name || 'Member',
-        email: self.members[0]?.email || 'member@example.com'
-      },
-      theme: {
-        color: '#007bff'
-      }
-    };
-   
-    const rzp = new (window as any).Razorpay(options);
-    rzp.open();
-  }
-   
+		Fine fine = Fine.builder().memberId(memberId).amount(totalFine).status(Fine.FineStatus.PENDING)
+				.transactionDate(LocalDate.now()).build();
+
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public FineDTO payFine(Long memberId, Long fineId) {
+		log.info("Processing payment for fine ID: {} by member ID: {}", fineId, memberId);
+
+		Fine fine = fineRepository.findById(fineId)
+				.orElseThrow(() -> new FineNotFoundException("Fine not found with ID: " + fineId));
+
+		if (!fine.getMemberId().equals(memberId)) {
+			throw new UnauthorizedAccessException("You are not authorized to pay this fine.");
+		}
+
+		if (fine.getStatus() == Fine.FineStatus.PAID) {
+			throw new RuntimeException("This fine is already paid.");
+		}
+
+		fine.setStatus(Fine.FineStatus.PAID);
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+	}
+
+	@Override
+	public List<FineDTO> getAllFines() {
+		log.info("Fetching all fines (admin view)");
+		return fineRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	@Override
+	public List<FineDTO> getFinesByMemberId(Long memberId) {
+		log.info("Fetching fines for member ID: {}", memberId);
+		return fineRepository.findByMemberId(memberId).stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	private long calculateOverdueDays(LocalDate dueDate, LocalDate returnDate) {
+	    if (returnDate != null && returnDate.isAfter(dueDate)) {
+	        return java.time.temporal.ChronoUnit.DAYS.between(dueDate, returnDate);
+	    }
+	    return 0;
+	}
+
+	private FineDTO mapToDTO(Fine fine) {
+		return FineDTO.builder().fineId(fine.getFineId()).memberId(memberClient.getMemberById(fine.getMemberId()))
+				.amount(fine.getAmount()).status(fine.getStatus().name()).transactionDate(fine.getTransactionDate())
+				.build();
+	}
 }
 
+check this for 
