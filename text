@@ -1,27 +1,210 @@
-next: (res) => {
-  if (res?.errorCode === 'NO_FINE_DUE') {
-    this.message = res.message || '🎉 You have no pending fine.';
-    this.fineDetails = null;
-    return;
-  }
+package com.cts.service;
 
-  this.fineDetails = res;
-  if (!this.fineDetails || this.fineDetails.amount === 0) {
-    this.message = '🎉 You have no pending fine.';
-    return;
-  }
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
-  if (this.fineDetails.status === 'PAID') {
-    this.message = '✅ Fine already paid.';
-    return;
-  }
+import org.springframework.stereotype.Service;
 
-  this.message = '✅ Fine calculated successfully. Opening payment...';
-  setTimeout(() => {
-    this.openRazorpayUI();
-  }, 1000);
-},
-error: (err) => {
-  this.error = '❌ Error calculating fine.';
-  console.error(err);
+import com.ctc.exception.FineNotFoundException;
+import com.ctc.exception.NoFineDueException;
+import com.ctc.exception.UnauthorizedAccessException;
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.dto.FineDTO;
+import com.cts.feign.BorrowingClient;
+import com.cts.feign.MemberClient;
+import com.cts.model.Fine;
+import com.cts.repository.FineRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FineServiceImpl implements FineService {
+
+	private final FineRepository fineRepository;
+	private final BorrowingClient borrowingClient;
+	private final MemberClient memberClient;
+
+	private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(1.00);
+
+	@Override
+	public FineDTO calculateFine(Long memberId) {
+	log.info("Calculating fine for member ID: {}", memberId);
+	 
+	    List<Fine> pendingFines = fineRepository.findByMemberIdAndStatus(memberId, Fine.FineStatus.PENDING);
+	    if (!pendingFines.isEmpty()) {
+	        throw new RuntimeException("You already have a pending fine. Please pay it before calculating again.");
+	    }
+	 
+	    List<BorrowingTransactionDTO> borrowedBooks = borrowingClient.getBorrowedBooksByMember(memberId);
+	    BigDecimal totalFine = BigDecimal.ZERO;
+	 
+	    for (BorrowingTransactionDTO tx : borrowedBooks) {
+	        if (tx.getStatus() == BorrowingTransactionDTO.Status.RETURNED) {
+	            // ⛳️ Fix: use dueDate as borrowDate + 14
+	            LocalDate dueDate = tx.getBorrowDate().plusDays(14);
+	            long overdueDays = calculateOverdueDays(dueDate, tx.getReturnDate());
+	 
+	            if (overdueDays > 0) {
+	                totalFine = totalFine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+	            }
+	        }
+	    }
+	 
+	    if (totalFine.compareTo(BigDecimal.ZERO) <= 0) {
+	log.info("No overdue books for member ID: {}", memberId);
+	        throw new NoFineDueException("🎉 Great news! You have no pending fines at this time.");
+	    }
+	 
+	    Fine fine = Fine.builder()
+	            .memberId(memberId)
+	            .amount(totalFine)
+	            .status(Fine.FineStatus.PENDING)
+	            .transactionDate(LocalDate.now())
+	            .build();
+	 
+	    fineRepository.save(fine);
+	 
+	    return mapToDTO(fine);
+	}
+
+	@Override
+	public FineDTO payFine(Long memberId, Long fineId) {
+		log.info("Processing payment for fine ID: {} by member ID: {}", fineId, memberId);
+
+		Fine fine = fineRepository.findById(fineId)
+				.orElseThrow(() -> new FineNotFoundException("Fine not found with ID: " + fineId));
+
+		if (!fine.getMemberId().equals(memberId)) {
+			throw new UnauthorizedAccessException("You are not authorized to pay this fine.");
+		}
+
+		if (fine.getStatus() == Fine.FineStatus.PAID) {
+			throw new RuntimeException("This fine is already paid.");
+		}
+
+		fine.setStatus(Fine.FineStatus.PAID);
+		fineRepository.save(fine);
+
+		return mapToDTO(fine);
+		
+//		try {
+//			String msg = "Book borrowed: " + book.getTitle() + ". Return by: " + savedTx.getDueDate();
+//			mailClient.sendEmail(member.getEmail(), "Library Borrowing Info", msg);
+//			log.info("Email sent to {}", member.getEmail());
+//		} catch (Exception e) {
+//			log.error("Email failed: {}", e.getMessage());
+//		}
+	}
+
+	@Override
+	public List<FineDTO> getAllFines() {
+		log.info("Fetching all fines (admin view)");
+		return fineRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	@Override
+	public List<FineDTO> getFinesByMemberId(Long memberId) {
+		log.info("Fetching fines for member ID: {}", memberId);
+		return fineRepository.findByMemberId(memberId).stream().map(this::mapToDTO).collect(Collectors.toList());
+	}
+
+	private long calculateOverdueDays(LocalDate dueDate, LocalDate returnDate) {
+		if (returnDate != null && returnDate.isAfter(dueDate)) {
+			return java.time.temporal.ChronoUnit.DAYS.between(dueDate, returnDate);
+		}
+		return 0;
+	}
+
+	private FineDTO mapToDTO(Fine fine) {
+		return FineDTO.builder().fineId(fine.getFineId()).memberId(memberClient.getMemberById(fine.getMemberId()))
+				.amount(fine.getAmount()).status(fine.getStatus().name()).transactionDate(fine.getTransactionDate())
+				.build();
+	}
 }
+
+
+package com.ctc.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.cts.dto.ErrorResponse;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+	@ExceptionHandler(FineNotFoundException.class)
+	public ErrorResponse handleFineNotFoundException(FineNotFoundException ex, HttpServletRequest request) {
+		return new ErrorResponse("FINE_NOT_FOUND", ex.getMessage(), request.getRequestURI());
+	}
+
+	@ExceptionHandler(UnauthorizedAccessException.class)
+	public ErrorResponse handleUnauthorizedAccessException(UnauthorizedAccessException ex, HttpServletRequest request) {
+		return new ErrorResponse("UNAUTHORIZED_ACCESS", ex.getMessage(), request.getRequestURI());
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ErrorResponse handleGenericException(Exception ex, HttpServletRequest request) {
+		return new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred.", request.getRequestURI());
+	}
+	
+	@ExceptionHandler(NoFineDueException.class)
+	public ResponseEntity<ErrorResponse> handleNoFineException(NoFineDueException ex, HttpServletRequest request) {
+	    ErrorResponse error = new ErrorResponse("NO_FINE_DUE", ex.getMessage(), request.getRequestURI());
+	    return ResponseEntity.status(HttpStatus.OK).body(error);  // ⬅️ return as 200 OK with message
+	}
+}
+
+package com.cts.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.cts.dto.FineDTO;
+import com.cts.service.FineService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/fines")
+@RequiredArgsConstructor
+public class FineController {
+
+	private final FineService fineService;
+
+	// ✅ 1. Calculate fine for a member (creates a new fine if overdue exists)
+	@PostMapping("/calculatefine/{memberId}")
+	public FineDTO calculateFine(@PathVariable Long memberId) {
+		return fineService.calculateFine(memberId);
+	}
+
+	// ✅ 2. Pay a specific fine for the logged-in member
+	@PostMapping("/pay/{memberId}/{fineId}")
+	public FineDTO payFine(@PathVariable Long memberId, @PathVariable Long fineId) {
+		return fineService.payFine(memberId, fineId);
+	}
+
+	// ✅ 3. Admin - get all fines
+	@GetMapping("/allfines")
+	public List<FineDTO> getAllFines() {
+		return fineService.getAllFines();
+	}
+
+	// ✅ 4. Member - get own fines
+	@GetMapping("/member/{memberId}")
+	public List<FineDTO> getFinesForMember(@PathVariable Long memberId) {
+		return fineService.getFinesByMemberId(memberId);
+	}
+}
+
+correct or update the response that will give an respons as there is no fine to calculate if no fine is there when calculated the fine, fine paid successfully 
