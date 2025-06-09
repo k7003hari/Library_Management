@@ -113,4 +113,264 @@ public class FineServiceImpl implements FineService {
 	}
 }
 
-check this for 
+import { Component, OnInit } from '@angular/core';
+import { MemberService } from '../member.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { jwtDecode } from 'jwt-decode';
+import { ToastrService } from 'ngx-toastr';
+
+@Component({
+  selector: 'app-member-up-del',
+  standalone: true,
+  imports: [RouterLink, FormsModule, CommonModule, NavbarComponent],
+  templateUrl: './member-up-del.component.html',
+  styleUrls: ['./member-up-del.component.css']
+})
+export class MemberUpDelComponent implements OnInit {
+  members: any[] = [];
+  member: any = null;
+  memberId: number | null = null;
+  memberEmail: string = '';
+  userRole: string = '';
+  loggedInEmail: string = '';
+
+  constructor(
+    private memberService: MemberService,
+    private router: Router,
+    private toastr: ToastrService
+  ) { }
+
+  ngOnInit(): void {
+    this.extractRoleAndThenLoadMembers();
+  }
+
+  extractRoleAndThenLoadMembers(): void {
+    const token = localStorage.getItem('JWT');
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        this.userRole = decoded.role || decoded.roles || '';
+        this.loggedInEmail = decoded.email;
+        localStorage.setItem('memberId', decoded.userId);
+        localStorage.setItem('email', decoded.email);
+        this.loadMembers();
+      } catch (err) {
+        console.error('Failed to decode JWT', err);
+        this.toastr.error('Invalid JWT token');
+      }
+    }
+  }
+
+  loadMembers(): void {
+    if (this.userRole === 'admin') {
+      this.memberService.getAllMembers().subscribe({
+        next: (data) => this.members = data,
+        error: (err) => {
+          console.error('Error loading members', err);
+          this.toastr.error('Failed to load members');
+        }
+      });
+    } else if (this.userRole === 'member') {
+      const email = localStorage.getItem('email');
+      if (email) {
+        this.memberService.getMemberByEmail(email).subscribe({
+          next: (data) => this.members = [data],
+          error: () => {
+            this.toastr.error('Could not fetch your profile');
+          }
+        });
+      }
+    }
+  }
+
+  updateMember(memberId: number): void {
+    this.router.navigate(['/updateMember', memberId]);
+  }
+
+  deleteMember(memberId: number): void {
+    if (confirm('Are you sure you want to delete this member?')) {
+      this.memberService.deleteMember(memberId).subscribe({
+        next: () => {
+          this.members = this.members.filter(m => m.memberId !== memberId);
+          this.toastr.success('Member deleted successfully');
+        },
+        error: () => {
+          this.toastr.error('Failed to delete member');
+        }
+      });
+    }
+  }
+
+  searchMember(): void {
+    if (this.memberId) {
+      this.memberService.getMemberById(this.memberId).subscribe({
+        next: (data) => this.member = data,
+        error: () => {
+          this.toastr.warning('Member not found by ID');
+          this.member = null;
+        }
+      });
+    } else if (this.memberEmail) {
+      this.memberService.getMemberByEmail(this.memberEmail).subscribe({
+        next: (data) => this.member = data,
+        error: () => {
+          this.toastr.warning('Member not found by email');
+          this.member = null;
+        }
+      });
+    } else {
+      this.toastr.info('Please enter a Member ID or Email to search');
+    }
+  }
+
+  fineDetails: any = null;
+  message: string = '';
+  error: string = '';
+
+  calculateFine(): void {
+    this.message = '';
+    this.error = '';
+    const id = Number(localStorage.getItem('memberId'));
+   
+    if (!id) {
+      this.error = '⚠️ Member ID not found.';
+      return;
+    }
+   
+    this.memberService.calculateFine(id).subscribe({
+      next: (res) => {
+        this.fineDetails = res;
+   
+        if (!this.fineDetails || this.fineDetails.amount === 0) {
+          this.message = '🎉 You have no pending fine.';
+          return;
+        }
+   
+        if (this.fineDetails.status === 'PAID') {
+          this.message = '✅ Fine already paid.';
+          return;
+        }
+   
+        this.message = '✅ Fine calculated successfully. Opening payment...';
+   
+        setTimeout(() => {
+          this.openRazorpayUI();
+        }, 1000);
+      },
+      error: (err) => {
+        console.error('❌ Backend error:', err);
+   
+        const errMsg = err?.error?.message || '';
+   
+        if (
+          errMsg.toLowerCase().includes('no fine due') ||
+          errMsg.toLowerCase().includes('fine not found') ||
+          err.status === 404
+        ) {
+          this.message = '🎉 You have no pending fine.';
+        } else {
+          this.error = '❌ Error calculating fine.';
+        }
+      }
+    });
+  }
+
+  payFine(): void {
+    this.message = '';
+    this.error = '';
+    const id = Number(localStorage.getItem('memberId'));
+    const fineId = this.fineDetails?.fineId;
+   
+    if (!fineId) {
+      this.error = '⚠️ Please calculate fine first.';
+      return;
+    }
+   
+    this.memberService.payFine(id, fineId).subscribe({
+      next: () => {
+        this.message = '💸 Fine paid successfully.';
+        this.fineDetails.status = 'PAID';
+   
+        // ✅ Optional UI refresh
+        setTimeout(() => {
+          this.loadMembers();
+        }, 1000);
+      },
+      error: (err) => {
+        this.error = '❌ Payment failed.';
+        console.error(err);
+      }
+    });
+  }
+
+  goToAddMember(): void {
+    this.router.navigate(['/addMember']);
+  }
+
+  openRazorpayUI(): void {
+    const self = this; // capture Angular context
+   
+    const options = {
+      key: 'rzp_test_mMYCMsqoLV36CI',
+      amount: this.fineDetails.amount * 100, // convert ₹ to paise
+      currency: 'INR',
+      name: 'Library Management System',
+      description: 'Fine Payment',
+      handler: function (response: any) {
+        alert('✅ Payment successful!\nPayment ID: ' + response.razorpay_payment_id);
+        
+        // ✅ Now correctly call Angular method
+        self.payFine(); 
+      },
+      prefill: {
+        name: self.members[0]?.name || 'Member',
+        email: self.members[0]?.email || 'member@example.com'
+      },
+      theme: {
+        color: '#007bff'
+      }
+    };
+   
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  }
+   
+}
+
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class FinesService {
+  private pathCal = 'http://localhost:9090/fines/calculatefine';
+  private pathPay = 'http://localhost:9090/fines/pay';
+  private pathView = 'http://localhost:9090/fines/allfines';
+  private pathMemberFines = 'http://localhost:9090/fines/member'; 
+
+  constructor(private http: HttpClient) {}
+
+  calculateFine(memberId: number): Observable<any> {
+    return this.http.post(`${this.pathCal}/${memberId}`, {});
+  }
+
+  payFine(memberId: number, fineId: number): Observable<any> {
+    return this.http.post(`${this.pathPay}/${memberId}/${fineId}`, {});
+  }
+
+  getAllFines(): Observable<any[]> {
+    return this.http.get<any[]>(this.pathView);
+  }
+
+  getMemberFines(memberId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.pathMemberFines}/${memberId}`);
+  }
+}
+
+can you check this
+
