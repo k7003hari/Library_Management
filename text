@@ -1,75 +1,15 @@
-<app-navbar></app-navbar>
-<div class="container " style="max-width: 500px; margin-top: 150px;">
-  <div class="card shadow-sm">
-    <div class="card-header bg-primary text-white text-center">
-      <h3 class="mb-0">Update Book Details</h3>
-    </div>
-    <div class="card-body">
-      <form (ngSubmit)="updateBook()" #updateForm="ngForm" novalidate>
-
-        <div class="form-floating mb-3">
-          <input type="text" class="form-control" id="title" name="title" placeholder="Title" [(ngModel)]="book.title"
-            required #title="ngModel" />
-          <label for="title">Title</label>
-          <div *ngIf="title.invalid && (title.dirty || title.touched)" class="text-danger small">
-            Title is required.
-          </div>
-        </div>
-
-        <div class="form-floating mb-3">
-          <input type="text" class="form-control" id="author" name="author" placeholder="Author"
-            [(ngModel)]="book.author" required #author="ngModel" />
-          <label for="author">Author</label>
-          <div *ngIf="author.invalid && (author.dirty || author.touched)" class="text-danger small">
-            Author is required.
-          </div>
-        </div>
-
-        <div class="form-floating mb-3">
-          <input type="text" class="form-control" id="genre" name="genre" placeholder="Genre" [(ngModel)]="book.genre"
-            required #genre="ngModel" />
-          <label for="genre">Genre</label>
-          <div *ngIf="genre.invalid && (genre.dirty || genre.touched)" class="text-danger small">
-            Genre is required.
-          </div>
-        </div>
-
-        <div class="form-floating mb-3">
-          <input type="text" class="form-control" id="isbn" name="isbn" placeholder="ISBN" [(ngModel)]="book.isbn"
-            required #isbn="ngModel" />
-          <label for="isbn">ISBN</label>
-          <div *ngIf="isbn.invalid && (isbn.dirty || isbn.touched)" class="text-danger small">
-            ISBN is required.
-          </div>
-        </div>
-
-        <div class="form-floating mb-3">
-          <input type="number" min="0" class="form-control" id="yearPublished" name="yearPublished"
-            placeholder="Year Published" [(ngModel)]="book.yearPublished" required #yearPublished="ngModel" />
-          <label for="yearPublished">Year Published</label>
-          <div *ngIf="yearPublished.invalid && (yearPublished.dirty || yearPublished.touched)"
-            class="text-danger small">
-            Year Published is required and must be valid.
-          </div>
-        </div>
-
-        <div class="form-floating mb-4">
-          <input type="number" min="0" class="form-control" id="availableCopies" name="availableCopies"
-            placeholder="Available Copies" [(ngModel)]="book.availableCopies" required #availableCopies="ngModel" />
-          <label for="availableCopies">Available Copies</label>
-          <div *ngIf="availableCopies.invalid && (availableCopies.dirty || availableCopies.touched)"
-            class="text-danger small">
-            Available Copies is required and must be valid.
-          </div>
-        </div>
-
-        <button class="btn btn-success  w-80 fw-bold" type="submit" [disabled]="updateForm.invalid">
-          Update Book
-        </button>
-      </form>
+<!-- ✅ Toast Notification -->
+<div *ngIf="toastMessage" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+  <div class="toast show align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close" (click)="toastMessage = null"></button>
     </div>
   </div>
 </div>
+
 
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -77,24 +17,25 @@ import { BookService, AddBook, AllBook } from '../book.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from '../navbar/navbar.component';
- 
+
 @Component({
   selector: 'app-book-update',
   standalone: true,
-  imports: [FormsModule, CommonModule, NavbarComponent,RouterLink],
+  imports: [FormsModule, CommonModule, NavbarComponent, RouterLink],
   templateUrl: './book-update.component.html',
   styleUrls: ['./book-update.component.css']
 })
 export class BookUpdateComponent implements OnInit {
   bookId!: string;
   book: AddBook = new AddBook('', '', '', '', '', '');
- 
-  constructor( 
+  toastMessage: string | null = null;
+
+  constructor(
     private route: ActivatedRoute,
     private bookService: BookService,
     private router: Router
   ) {}
- 
+
   ngOnInit(): void {
     this.bookId = this.route.snapshot.paramMap.get('id')!;
     this.bookService.getById(this.bookId).subscribe((data: AllBook) => {
@@ -108,12 +49,14 @@ export class BookUpdateComponent implements OnInit {
       );
     });
   }
- 
+
   updateBook(): void {
     this.bookService.update(this.bookId, this.book).subscribe(() => {
-      alert('Book updated successfully!');
-      this.router.navigate(['/allBook']);
+      this.toastMessage = 'Book updated successfully!';
+      setTimeout(() => {
+        this.toastMessage = null;
+        this.router.navigate(['/allBook']);
+      }, 3000); // Redirect after 3 seconds
     });
   }
 }
-
