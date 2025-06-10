@@ -26,7 +26,7 @@
           <label for="title">Title</label>
           <div *ngIf="title.invalid && (title.dirty || title.touched)" class="text-danger small">
             <div *ngIf="title.errors?.['required']">Title is required.</div>
-            <div *ngIf="title.errors?.['minlength']">Title must be at least 3 characters.</div>
+            <div *ngIf="title.errors?.['minlength']">Minimum 3 characters required.</div>
           </div>
         </div>
 
@@ -36,7 +36,7 @@
           <label for="author">Author</label>
           <div *ngIf="author.invalid && (author.dirty || author.touched)" class="text-danger small">
             <div *ngIf="author.errors?.['required']">Author is required.</div>
-            <div *ngIf="author.errors?.['minlength']">Author must be at least 3 characters.</div>
+            <div *ngIf="author.errors?.['minlength']">Minimum 3 characters required.</div>
           </div>
         </div>
 
@@ -55,7 +55,7 @@
           <label for="isbn">ISBN</label>
           <div *ngIf="isbn.invalid && (isbn.dirty || isbn.touched)" class="text-danger small">
             <div *ngIf="isbn.errors?.['required']">ISBN is required.</div>
-            <div *ngIf="isbn.errors?.['pattern']">Invalid ISBN format.</div>
+            <div *ngIf="isbn.errors?.['pattern']">Enter a valid ISBN format (10–13 digits).</div>
           </div>
         </div>
 
@@ -63,11 +63,9 @@
           <input type="number" class="form-control" id="yearPublished" name="yearPublished"
             placeholder="Year Published" ngModel required min="1900" max="2099" #yearPublished="ngModel" />
           <label for="yearPublished">Year Published</label>
-          <div *ngIf="yearPublished.invalid && (yearPublished.dirty || yearPublished.touched)"
-            class="text-danger small">
-            <div *ngIf="yearPublished.errors?.['required']">Year Published is required.</div>
-            <div *ngIf="yearPublished.errors?.['min']">Year must be after 1900.</div>
-            <div *ngIf="yearPublished.errors?.['max']">Year must be before 2100.</div>
+          <div *ngIf="yearPublished.invalid && (yearPublished.dirty || yearPublished.touched)" class="text-danger small">
+            <div *ngIf="yearPublished.errors?.['required']">Year is required.</div>
+            <div *ngIf="yearPublished.errors?.['min'] || yearPublished.errors?.['max']">Enter a valid year (1900–2099).</div>
           </div>
         </div>
 
@@ -75,10 +73,9 @@
           <input type="number" class="form-control" id="availableCopies" name="availableCopies"
             placeholder="Available Copies" ngModel required min="0" #availableCopies="ngModel" />
           <label for="availableCopies">Available Copies</label>
-          <div *ngIf="availableCopies.invalid && (availableCopies.dirty || availableCopies.touched)"
-            class="text-danger small">
-            <div *ngIf="availableCopies.errors?.['required']">Available Copies is required.</div>
-            <div *ngIf="availableCopies.errors?.['min']">Copies must be at least 0.</div>
+          <div *ngIf="availableCopies.invalid && (availableCopies.dirty || availableCopies.touched)" class="text-danger small">
+            <div *ngIf="availableCopies.errors?.['required']">Available copies is required.</div>
+            <div *ngIf="availableCopies.errors?.['min']">Cannot be negative.</div>
           </div>
         </div>
 
@@ -89,30 +86,3 @@
     </div>
   </div>
 </div>
-
-export class AddBookComponent {
-  toastMessage: string | null = null;
-
-  constructor(private router: Router, private bookService: BookService) {}
-
-  validateAdd(form: NgForm) {
-    if (form.invalid) return;
-
-    this.bookService.add(form.value).subscribe({
-      next: (response) => {
-        console.log('✅ Book added:', response);
-        this.toastMessage = 'Book added successfully!';
-        setTimeout(() => {
-          this.toastMessage = null;
-          this.router.navigate(['/allBook']);
-        }, 3000);
-      },
-      error: (error) => {
-        console.error('❌ Error adding book:', error);
-        this.toastMessage = 'Failed to add book!';
-        setTimeout(() => (this.toastMessage = null), 3000);
-      }
-    });
-  }
-}
-
