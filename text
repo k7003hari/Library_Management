@@ -1,3 +1,196 @@
+package com.cts.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BookDTO {
+    private Long bookId;
+    private String title;
+    private String author;
+    private String genre;
+    private String isbn;
+    private int yearPublished;
+    private int availableCopies;
+}
+
+package com.cts.dto;
+ 
+import java.time.LocalDate;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+ 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BorrowingTransactionDTO {
+    private Long transactionId;
+    private Long bookId;
+    private Long memberId;
+    private LocalDate borrowDate;
+    private LocalDate dueDate;
+    private LocalDate returnDate;
+    private Status status; // Enum: BORROWED or RETURNED
+    private double fineAmount;
+    private String bookTitle;
+ 
+    public enum Status {
+        BORROWED,
+        RETURNED
+    }
+}
+ 
+package com.cts.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MemberDTO {
+    private Long memberId;
+    private String name;
+    private String email;
+    private String phone;
+    private String address;
+    private String membershipStatus;
+}
+package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.cts.dto.BookDTO;
+
+import lombok.Data;
+import lombok.Getter;
+
+@FeignClient(name = "BOOKSERVICE", path = "/books")
+public interface BookClient {
+ 
+    @GetMapping("/getById/{id}")
+    BookDTO getBookById(@PathVariable Long id);
+ 
+    @PutMapping("/{id}/copies")
+    void updateBookCopies(@PathVariable("id") Long bookId, @RequestParam("availableCopies") int availableCopies);
+}
+ package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@FeignClient(name = "MAILNOTIFICATION", path = "/email")
+public interface MailClient {
+	@PostMapping("/send")
+	public String sendEmail(@RequestParam String recipient, @RequestParam String subject,
+			@RequestParam String message) ;
+ 
+}
+
+package com.cts.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.cts.dto.MemberDTO;
+
+@FeignClient(name = "MEMBERSERVICE", path="/members")
+public interface MemberClient {
+    @GetMapping("/{memberId}")
+    MemberDTO getMember(@PathVariable Long memberId);
+}
+
+package com.cts.model;
+ 
+import java.time.LocalDate;
+ 
+import jakarta.persistence.*;
+import lombok.*;
+ 
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BorrowingTransaction {
+ 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long transactionId;
+ 
+    private Long bookId;
+    private Long memberId;
+ 
+    private LocalDate borrowDate;
+    private LocalDate dueDate;
+    private LocalDate returnDate;
+ 
+    @Enumerated(EnumType.STRING)
+    private Status status;
+ 
+    private double fineAmount;
+ 
+    @Transient
+    private String bookTitle;
+ 
+    public enum Status {
+        BORROWED,
+        RETURNED
+    }
+}
+package com.cts.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.cts.model.BorrowingTransaction;
+
+public interface BorrowingRepository extends JpaRepository<BorrowingTransaction, Long> {
+	List<BorrowingTransaction> findByMemberIdAndStatus(Long memberId, BorrowingTransaction.Status status);
+
+	Optional<BorrowingTransaction> findByBookIdAndMemberIdAndStatus(Long bookId, Long memberId,
+			BorrowingTransaction.Status status);
+}
+
+package com.cts.service;
+
+import java.util.List;
+
+import com.cts.dto.BorrowingTransactionDTO;
+import com.cts.model.BorrowingTransaction;
+
+public interface BorrowingService {
+
+	BorrowingTransaction borrowBook(BorrowingTransactionDTO transactionDTO);
+
+	BorrowingTransaction returnBook(Long memberId, Long bookId);
+
+	List<BorrowingTransactionDTO> getMemberBorrowedBooks(Long memberId);
+
+	List<BorrowingTransactionDTO> getAllBorrows();
+}
+
 package com.cts.service;
 
 import java.time.LocalDate;
@@ -180,7 +373,6 @@ public class BorrowingServiceImpl implements BorrowingService {
 	}
 }
 
-
 package com.cts.controller;
 
 import java.util.List;
@@ -216,7 +408,7 @@ public class BorrowingController {
 	}
 
 	@GetMapping("/member/{memberId}")
-	public List<BorrowingTransactionDTO> getBorrowedBooks(@PathVariable Long memberId) {
+	public List<BorrowingTransactionDTO> getMemberBorrowedBooks(@PathVariable Long memberId) {
 	return borrowingService.getMemberBorrowedBooks(memberId);
 	}
 	 
@@ -225,6 +417,7 @@ public class BorrowingController {
 	return borrowingService.getAllBorrows();
 	}
 }
+
 
 
 
