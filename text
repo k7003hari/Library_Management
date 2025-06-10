@@ -12,93 +12,84 @@
   </div>
 </div>
 
-<div class="container p-5">
-  <div class="add-book-card">
-    <h3 class="text-center mb-4">Add New Book</h3>
-    <form #addBook="ngForm" (ngSubmit)="validateAdd(addBook)" novalidate>
+<div class="container" style="max-width: 500px; margin-top: 150px;">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white text-center">
+      <h3 class="mb-0">Add New Book</h3>
+    </div>
+    <div class="card-body">
+      <form #addBook="ngForm" (ngSubmit)="validateAdd(addBook)" novalidate>
 
-      <div class="mb-3">
-        <label for="title" class="form-label">Book Title</label>
-        <input ngModel name="title" type="text" class="form-control" id="title" placeholder="Enter book title"
-          required minlength="3" #title="ngModel" />
-        <div *ngIf="title.invalid && (title.dirty || title.touched)" class="text-danger small">
-          <div *ngIf="title.errors?.['required']">Title is required.</div>
-          <div *ngIf="title.errors?.['minlength']">Title must be at least 3 characters.</div>
+        <div class="form-floating mb-3">
+          <input type="text" class="form-control" id="title" name="title" placeholder="Title"
+            ngModel required minlength="3" #title="ngModel" />
+          <label for="title">Title</label>
+          <div *ngIf="title.invalid && (title.dirty || title.touched)" class="text-danger small">
+            <div *ngIf="title.errors?.['required']">Title is required.</div>
+            <div *ngIf="title.errors?.['minlength']">Title must be at least 3 characters.</div>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-3">
-        <label for="author" class="form-label">Author</label>
-        <input ngModel name="author" type="text" class="form-control" id="author" placeholder="Enter author name"
-          required minlength="3" #author="ngModel" />
-        <div *ngIf="author.invalid && (author.dirty || author.touched)" class="text-danger small">
-          <div *ngIf="author.errors?.['required']">Author is required.</div>
-          <div *ngIf="author.errors?.['minlength']">Author must be at least 3 characters.</div>
+        <div class="form-floating mb-3">
+          <input type="text" class="form-control" id="author" name="author" placeholder="Author"
+            ngModel required minlength="3" #author="ngModel" />
+          <label for="author">Author</label>
+          <div *ngIf="author.invalid && (author.dirty || author.touched)" class="text-danger small">
+            <div *ngIf="author.errors?.['required']">Author is required.</div>
+            <div *ngIf="author.errors?.['minlength']">Author must be at least 3 characters.</div>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-3">
-        <label for="genre" class="form-label">Genre</label>
-        <input ngModel name="genre" type="text" class="form-control" id="genre" placeholder="Enter genre"
-          required #genre="ngModel" />
-        <div *ngIf="genre.invalid && (genre.dirty || genre.touched)" class="text-danger small">
-          Genre is required.
+        <div class="form-floating mb-3">
+          <input type="text" class="form-control" id="genre" name="genre" placeholder="Genre"
+            ngModel required #genre="ngModel" />
+          <label for="genre">Genre</label>
+          <div *ngIf="genre.invalid && (genre.dirty || genre.touched)" class="text-danger small">
+            Genre is required.
+          </div>
         </div>
-      </div>
 
-      <div class="mb-3">
-        <label for="isbn" class="form-label">ISBN</label>
-        <input ngModel name="isbn" type="text" class="form-control" id="isbn"
-          placeholder="e.g., 978-3-16-148410-0" required pattern="^[0-9\-]{10,13}$" #isbn="ngModel" />
-        <div *ngIf="isbn.invalid && (isbn.dirty || isbn.touched)" class="text-danger small">
-          <div *ngIf="isbn.errors?.['required']">ISBN is required.</div>
-          <div *ngIf="isbn.errors?.['pattern']">Invalid ISBN format.</div>
+        <div class="form-floating mb-3">
+          <input type="text" class="form-control" id="isbn" name="isbn" placeholder="ISBN"
+            ngModel required pattern="^[0-9\-]{10,13}$" #isbn="ngModel" />
+          <label for="isbn">ISBN</label>
+          <div *ngIf="isbn.invalid && (isbn.dirty || isbn.touched)" class="text-danger small">
+            <div *ngIf="isbn.errors?.['required']">ISBN is required.</div>
+            <div *ngIf="isbn.errors?.['pattern']">Invalid ISBN format.</div>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-3">
-        <label for="year" class="form-label">Publication Year</label>
-        <input ngModel name="yearPublished" type="number" class="form-control" id="year" required
-          min="1900" max="2099" placeholder="e.g., 2024" #yearPublished="ngModel" />
-        <div *ngIf="yearPublished.invalid && (yearPublished.dirty || yearPublished.touched)" class="text-danger small">
-          <div *ngIf="yearPublished.errors?.['required']">Publication Year is required.</div>
-          <div *ngIf="yearPublished.errors?.['min']">Year must be after 1900.</div>
-          <div *ngIf="yearPublished.errors?.['max']">Year must be before 2100.</div>
+        <div class="form-floating mb-3">
+          <input type="number" class="form-control" id="yearPublished" name="yearPublished"
+            placeholder="Year Published" ngModel required min="1900" max="2099" #yearPublished="ngModel" />
+          <label for="yearPublished">Year Published</label>
+          <div *ngIf="yearPublished.invalid && (yearPublished.dirty || yearPublished.touched)"
+            class="text-danger small">
+            <div *ngIf="yearPublished.errors?.['required']">Year Published is required.</div>
+            <div *ngIf="yearPublished.errors?.['min']">Year must be after 1900.</div>
+            <div *ngIf="yearPublished.errors?.['max']">Year must be before 2100.</div>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-4">
-        <label for="copies" class="form-label">Available Copies</label>
-        <input ngModel name="availableCopies" type="number" class="form-control" id="copies" required
-          min="0" placeholder="e.g., 5" #availableCopies="ngModel" />
-        <div *ngIf="availableCopies.invalid && (availableCopies.dirty || availableCopies.touched)"
-          class="text-danger small">
-          <div *ngIf="availableCopies.errors?.['required']">Available Copies is required.</div>
-          <div *ngIf="availableCopies.errors?.['min']">Copies cannot be negative.</div>
+        <div class="form-floating mb-4">
+          <input type="number" class="form-control" id="availableCopies" name="availableCopies"
+            placeholder="Available Copies" ngModel required min="0" #availableCopies="ngModel" />
+          <label for="availableCopies">Available Copies</label>
+          <div *ngIf="availableCopies.invalid && (availableCopies.dirty || availableCopies.touched)"
+            class="text-danger small">
+            <div *ngIf="availableCopies.errors?.['required']">Available Copies is required.</div>
+            <div *ngIf="availableCopies.errors?.['min']">Copies must be at least 0.</div>
+          </div>
         </div>
-      </div>
 
-      <div class="d-grid">
-        <button type="submit" class="btn btn-custom" [disabled]="addBook.invalid">Add Book</button>
-      </div>
-    </form>
+        <button class="btn btn-success w-100 fw-bold" type="submit" [disabled]="addBook.invalid">
+          Add Book
+        </button>
+      </form>
+    </div>
   </div>
 </div>
 
-
-import { Component } from '@angular/core';
-import { NavbarComponent } from '../navbar/navbar.component';
-import { Router, RouterLink } from '@angular/router';
-import { BookService } from '../book.service';
-import { FormsModule, NgForm } from '@angular/forms';
-
-@Component({
-  selector: 'addbook',
-  standalone: true,
-  imports: [NavbarComponent, RouterLink, FormsModule],
-  templateUrl: './add-book.component.html',
-  styleUrl: './add-book.component.css'
-})
 export class AddBookComponent {
   toastMessage: string | null = null;
 
@@ -124,3 +115,4 @@ export class AddBookComponent {
     });
   }
 }
+
